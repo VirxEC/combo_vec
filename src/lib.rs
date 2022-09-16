@@ -1,15 +1,13 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
-//! An array that can be resized at runtime, without moving any data off the stack.
+//! An array that can be resized at runtime but allocated stack space at compile time and doesn't move any data off the stack when it overflows.
 //!
 //! Create a new [`ReArr`] with the [`rearr!`] macro.
 //!
 //! This works by allocating an array of `T` on the stack, and then using a Vec on the heap for overflow.
 //!
 //! The stack-allocated array is always used to store the first `N` elements, even when the array is resized.
-//!
-//! This is very useful when you normally have a small amount of items where storing them on the stack is ideal, but there is no actual upper bound to the amount of items you might need to handle.
 //!
 //! ## Examples
 //!
@@ -42,9 +40,9 @@
 //! // The total amount of elements that can be stored on the stack (3 elements were initially allocated)
 //! assert_eq!(resizeable_vec.stack_capacity(), 3);
 //! // The total amount of elements currently allocated on the heap - may vary depending on what Rust decides to do
-//! resizeable_vec.heap_capacity();
+//! assert!(resizeable_vec.heap_capacity() >= 2);
 //! // The total number of elements currently allocated in memory (stack + heap)
-//! resizeable_vec.capacity();
+//! assert!(resizeable_vec.capacity() >= 5);
 //! ```
 //!
 //! ### Allocating empty memory on the stack
@@ -56,12 +54,15 @@
 //! ```rust
 //! use combo_vec::{rearr, ReArr};
 //!
-//! // Allocate a new, empty ReArr where no elements can be stored on the stack.
-//! // Not sure why you'd want to do this, but it's possible.
-//! let no_stack_f32_vec = rearr![f32];
+//! // Easily allocate a new ReArr where 16 elements can be stored on the stack.
+//! let default_f32_vec = rearr![f32];
 //!
 //! // Allocate a new, empty ReArr with 17 elements abled to be stored on the stack.
 //! let empty_f32_vec = rearr![f32; 17];
+//!
+//! // An empty array of hashmaps (which can't be initialized in const contexts) can be allocated space on the stack.
+//! use std::collections::HashMap;
+//! let empty_hashmap_vec = rearr![HashMap<&str, i32>; 3];
 //! ```
 //!
 //! ### Allocating memory on the stack in const contexts
@@ -75,17 +76,22 @@
 //!
 //! const SOME_ITEMS: ReArr<i8, 3> = rearr![1, 2, 3];
 //! const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
-//! const NO_STACK_F32: ReArr<f32, 0> = rearr![f32];
 //!
-//! /// An empty array of hashmaps (which can't be initialized in const contexts) can be allocated space on the stack.
+//! // Infer the type and size of the ReArr
+//! const INFER_F32: ReArr<f32, 0> = rearr![];
+//!
+//! // No const-initialization is needed to create a ReArr with allocated elements on the stack
 //! use std::collections::HashMap;
-//! const HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![HashMap<&str, i32>; 3];
-//! ```
+//! const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![];
 //!
+//! /// Create a global-state RwLock that can store a ReArr
+//! use std::sync::RwLock;
+//! static PROGRAM_STATE: RwLock<ReArr<&str, 20>> = RwLock::new(rearr![]);
+//! ```
 
 use std::{
     array::IntoIter as ArrayIter,
-    fmt::{Debug, Display, Write},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     iter::{Chain, Flatten},
     vec::IntoIter as VecIter,
@@ -100,18 +106,23 @@ use std::{
 ///
 /// const SOME_ITEMS: ReArr<i8, 3> = rearr![1, 2, 3];
 /// const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
-/// const NO_STACK_F32: ReArr<f32, 0> = rearr![f32];
 ///
-/// /// An empty array of hashmaps (which can't be initialized in const contexts) can be allocated space on the stack.
+/// // Infer the type and size of the ReArr
+/// const NO_STACK_F32: ReArr<f32, 0> = rearr![];
+///
+/// // No const-initialization is needed to create a ReArr with allocated elements on the stack
 /// use std::collections::HashMap;
-/// const HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![HashMap<&str, i32>; 3];
+/// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![];
 ///
 /// let my_rearr = rearr![1, 2, 3];
 /// ```
 #[macro_export]
 macro_rules! rearr {
+    () => (
+        ReArr::new()
+    );
     ($type:ty) => (
-        ReArr::<$type, 0>::new()
+        ReArr::<$type, 16>::new()
     );
     ($type:ty; $n:literal) => (
         ReArr::<$type, $n>::new()
@@ -135,11 +146,13 @@ macro_rules! rearr {
 ///
 /// const SOME_ITEMS: ReArr<i8, 3> = rearr![1, 2, 3];
 /// const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
-/// const NO_STACK_F32: ReArr<f32, 0> = rearr![f32];
 ///
-/// /// An empty array of hashmaps (which can't be initialized in const contexts) can be allocated space on the stack.
+/// // Infer the type and size of the ReArr
+/// const NO_STACK_F32: ReArr<f32, 0> = rearr![];
+///
+/// // No const-initialization is needed to create a ReArr with allocated elements on the stack
 /// use std::collections::HashMap;
-/// const HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![HashMap<&str, i32>; 3];
+/// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![];
 ///
 /// let mut my_rearr = rearr![1, 2, 3];
 /// // Allocate an extra element on the heap
@@ -151,7 +164,7 @@ macro_rules! rearr {
 /// // Fill the last element on the stack, then allocate the next two items on the heap
 /// my_rearr.extend([3, 4, 5]);
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ReArr<T, const N: usize> {
     arr: [Option<T>; N],
     vec: Vec<T>,
@@ -206,6 +219,32 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Allocate more memory to what can be stored on the heap.
+    ///
+    /// Note that this function is not required to add more items, but can be used as an optimization to avoid excessive reallocations when adding many items.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    /// let my_rearr2 = rearr![4, 5, 6];
+    ///
+    /// // How much space can be stored in my_rearr currently (length of stack + number of items in heap)
+    /// // This is needed because if the stack isn't full and can store all our items, we don't want to allocate more space on the heap.
+    /// let my_rearr_capacity = my_rearr2.stack_capacity() + my_rearr.heap_len();
+    /// let extra_capacity = my_rearr_capacity - my_rearr.len();
+    ///
+    /// // Check if we need to reallocate
+    /// if extra_capacity < my_rearr2.len() {
+    ///     my_rearr.reserve(my_rearr2.len() - extra_capacity);
+    /// }
+    ///
+    /// assert!(my_rearr.capacity() >= my_rearr.len() + my_rearr2.len());
+    ///
+    /// // Extend my_rearr with my_rearr2
+    /// my_rearr.extend(my_rearr2);
+    /// ```
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.vec.reserve(additional);
@@ -213,7 +252,9 @@ impl<T, const N: usize> ReArr<T, N> {
 
     /// Create a resizable array from a fixed size array.
     ///
-    /// This is used by the [`rearr!`] macro, and you should consider using it instead.
+    /// Use Some is used for initialized values, and None is used for uninitialized values.
+    ///
+    /// This is used by the [`rearr!`] macro, and you should consider using it instead. Note that the macro can't create mixed initialized and uninitialized arrays, only one or the other.
     ///
     /// ```rust
     /// use combo_vec::{rearr, ReArr};
@@ -231,6 +272,16 @@ impl<T, const N: usize> ReArr<T, N> {
     /// Push an element to the end of the array.
     ///
     /// If the array is full, the element will be pushed to the heap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    /// my_rearr.push(4);
+    /// assert_eq!(my_rearr.to_vec(), vec![1, 2, 3, 4]);
+    /// ```
     #[inline]
     pub fn push(&mut self, val: T) {
         let stack_len = self.stack_len();
@@ -242,6 +293,18 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Get any element from the array as a reference, returning `None` if out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.get(0), Some(&1));
+    /// assert_eq!(my_rearr.get(1), Some(&2));
+    /// assert_eq!(my_rearr.get(2), Some(&3));
+    /// assert_eq!(my_rearr.get(3), None);
+    /// ```
     #[must_use]
     #[inline]
     pub fn get(&self, idx: usize) -> Option<&T> {
@@ -253,6 +316,19 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Get any element from the array as a mutable reference, `None` if out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    ///
+    /// if let Some(x) = my_rearr.get_mut(0) {
+    ///     *x = 4;
+    /// }
+    ///
+    /// assert_eq!(my_rearr.to_vec(), vec![4, 2, 3]);
     #[must_use]
     #[inline]
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
@@ -264,42 +340,117 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Whether or not where are any elements allocated on the heap instead of the stack
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.spilled(), false);
+    ///
+    /// my_rearr.push(4);
+    /// assert_eq!(my_rearr.spilled(), true);
+    /// ```
     #[inline]
     pub fn spilled(&self) -> bool {
         self.heap_len() > 0
     }
 
     /// How many elements are currently stored on the stack.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.stack_len(), 3);
+    /// my_rearr.push(4);
+    /// assert_eq!(my_rearr.stack_len(), 3);
+    /// ```
     #[inline]
     pub fn stack_len(&self) -> usize {
         self.arr.iter().flatten().count()
     }
 
     /// How many elements are currently stored on the heap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.heap_len(), 0);
+    /// my_rearr.push(4);
+    /// assert_eq!(my_rearr.heap_len(), 1);
+    /// ```
     #[inline]
     pub fn heap_len(&self) -> usize {
         self.vec.len()
     }
 
     /// How many elements are currently stored.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.len(), 3);
+    /// my_rearr.push(4);
+    /// assert_eq!(my_rearr.len(), 4);
+    /// ```
     #[inline]
     pub fn len(&self) -> usize {
         self.stack_len() + self.heap_len()
     }
 
     /// How many elements can be stored on the stack.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![i32; 3];
+    /// assert_eq!(my_rearr.len(), 0);
+    /// assert_eq!(my_rearr.stack_capacity(), 3);
+    /// ```
     #[inline]
     pub const fn stack_capacity(&self) -> usize {
         N
     }
 
     /// How many elements can be stored on the currently allocated heap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![i32; 3];
+    /// assert_eq!(my_rearr.len(), 0);
+    /// assert_eq!(my_rearr.heap_capacity(), 0);
+    /// ```
     #[inline]
     pub fn heap_capacity(&self) -> usize {
         self.vec.capacity()
     }
 
     /// How many elements can be stored without reallocating anything.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![i32; 3];
+    /// assert_eq!(my_rearr.len(), 0);
+    /// assert_eq!(my_rearr.capacity(), 3);
+    /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
         self.stack_capacity() + self.heap_capacity()
@@ -342,6 +493,15 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Check if there are no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![i32; 3];
+    /// assert!(my_rearr.is_empty());
+    /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -374,7 +534,7 @@ impl<T, const N: usize> ReArr<T, N> {
 
 impl<T: Clone, const N: usize> ReArr<T, N> {
     /// Get this [`ReArr`] represented as a [`Vec`].
-    /// 
+    ///
     /// [`Vec`]: std::vec::Vec
     #[inline]
     pub fn to_vec(&self) -> Vec<T> {
@@ -433,18 +593,15 @@ impl<T> std::iter::FromIterator<T> for ReArr<T, 0> {
     }
 }
 
+impl<T: Debug, const N: usize> Debug for ReArr<T, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("ReArr").field("arr", &self.arr).field("vec", &self.vec).finish()
+    }
+}
+
 impl<T: Debug, const N: usize> Display for ReArr<T, N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut s = String::new();
-        s.push('[');
-        for (i, item) in self.iter().enumerate() {
-            if i != 0 {
-                s.push_str(", ");
-            }
-            write!(s, "{:?}", item)?;
-        }
-        s.push(']');
-        write!(f, "{}", s)
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_list().entries(&self.arr).entries(&self.vec).finish()
     }
 }
 
@@ -452,11 +609,11 @@ impl<T: Debug, const N: usize> Display for ReArr<T, N> {
 mod tests {
     use super::ReArr;
 
-    const DEFAULT_TEST_COMBOVEC: ReArr<i32, 3> = rearr![1, 2, 3];
+    const DEFAULT_TEST_REARR: ReArr<i32, 3> = rearr![1, 2, 3];
 
     #[test]
     fn make_new() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.push(4);
         cv.push(5);
         println!("{}", cv);
@@ -473,7 +630,7 @@ mod tests {
 
     #[test]
     fn iter() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.push(4);
         assert_eq!(cv.iter().collect::<Vec<_>>(), vec![&1, &2, &3, &4]);
         assert_eq!(cv.into_iter().collect::<Vec<_>>(), vec![1, 2, 3, 4]);
@@ -481,7 +638,7 @@ mod tests {
 
     #[test]
     fn lengths() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.push(4);
         assert_eq!(cv.len(), 4);
         assert_eq!(cv.stack_len(), 3);
@@ -490,9 +647,9 @@ mod tests {
 
     #[test]
     fn extend() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.extend(vec![4, 5, 6]);
-        cv.extend(DEFAULT_TEST_COMBOVEC);
+        cv.extend(DEFAULT_TEST_REARR);
         dbg!(&cv);
         assert_eq!(cv.len(), 9);
         assert_eq!(cv.stack_len(), 3);
@@ -502,7 +659,7 @@ mod tests {
 
     #[test]
     fn truncate_into_stack_push() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.truncate(2);
         cv.push(3);
         assert_eq!(cv.len(), 3);
@@ -513,7 +670,7 @@ mod tests {
 
     #[test]
     fn truncate_into_stack() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.truncate(2);
         assert_eq!(cv.len(), 2);
         assert_eq!(cv.stack_len(), 2);
@@ -523,7 +680,7 @@ mod tests {
 
     #[test]
     fn truncate_into_heap() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.extend(vec![4, 5, 6]);
         cv.truncate(4);
         assert_eq!(cv.len(), 4);
@@ -534,7 +691,7 @@ mod tests {
 
     #[test]
     fn truncate_invalids() {
-        let mut cv = DEFAULT_TEST_COMBOVEC;
+        let mut cv = DEFAULT_TEST_REARR;
         cv.truncate(4);
         cv.truncate(3);
         assert_eq!(cv.len(), 3);
@@ -556,7 +713,7 @@ mod tests {
         let item3 = rearr![i32];
         println!("{}", item3);
         assert_eq!(item3.len(), 0);
-        assert_eq!(item3.stack_capacity(), 0);
+        assert_eq!(item3.stack_capacity(), 16);
 
         let item4 = rearr![i32; 5];
         println!("{}", item4);
