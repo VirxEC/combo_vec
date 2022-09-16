@@ -4,7 +4,7 @@
 
 "combo_vec" is a library for creating a "combo stack array-heap vector", or simply a resizable array.
 
-Create a new [`ReArr`] with the [`rearr!`] macro.
+Create a new `ReArr` with the `rearr!` macro.
 
 This works by allocating an array of `T` on the stack, and then using a Vec on the heap for overflow.
 
@@ -35,16 +35,16 @@ No Copy or Default traits required.
 ```rust
 use combo_vec::{rearr, ReArr};
 
-// Allocate a new, empty ReArr where no elements can be stored on the stack.
-// Not sure why you'd want to do this, but it's possible.
-let no_stack_f32_vec = rearr![f32];
+// Easily allocate a new ReArr where 16 elements can be stored on the stack.
+let default_f32_vec = rearr![f32];
+
 // Allocate a new, empty ReArr with 17 elements abled to be stored on the stack.
 let empty_f32_vec = rearr![f32; 17];
 ```
 
 ### Allocating memory on the stack in const contexts
 
-The main benefit of using the [`rearr!`] macro is that everything it does can be used in const contexts.
+The main benefit of using the `rearr!` macro is that everything it does can be used in const contexts.
 
 This allows you to allocate a ReArr at the start of your program in a Mutex or RwLock, and have minimal runtime overhead.
 
