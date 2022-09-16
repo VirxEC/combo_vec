@@ -721,7 +721,7 @@ impl<T: Debug, const N: usize> Debug for ReArr<T, N> {
 
 impl<T: Debug, const N: usize> Display for ReArr<T, N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.debug_list().entries(&self.arr).entries(&self.vec).finish()
+        f.debug_list().entries(self.arr.iter().flatten()).entries(&self.vec).finish()
     }
 }
 
