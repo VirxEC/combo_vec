@@ -314,7 +314,7 @@ impl<T, const N: usize> ReArr<T, N> {
             self.vec.truncate(len - N);
         } else {
             self.arr[len..].iter_mut().for_each(|x| *x = None);
-            self.vec = Vec::new();
+            self.vec.clear();
         }
     }
 
@@ -362,9 +362,13 @@ impl<T, const N: usize> ReArr<T, N> {
     /// Extend this array with all the elements from the given iterator.
     #[inline]
     pub fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        for e in iter {
-            self.push(e);
-        }
+        iter.into_iter().for_each(|x| self.push(x));
+    }
+
+    /// Get this [`ReArr`] represented as a [`Vec`], borrowing data instead of cloning it.
+    #[inline]
+    pub fn as_vec(&self) -> Vec<&T> {
+        self.iter().collect()
     }
 }
 
