@@ -457,6 +457,18 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Reduce the number of elements to the given length.
+    ///
+    /// If `new_len` is greater than the current length, this has no effect.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3, 4, 5];
+    /// my_rearr.truncate(3);
+    /// assert_eq!(my_rearr.to_vec(), vec![1, 2, 3]);
+    /// ```
     #[inline]
     pub fn truncate(&mut self, len: usize) {
         if len > self.len() {
@@ -470,6 +482,16 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Remove all elements from the array.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut my_rearr = rearr![1, 2, 3, 4, 5];
+    /// my_rearr.clear();
+    /// assert!(my_rearr.is_empty());
+    /// ```
     #[inline]
     pub fn clear(&mut self) {
         self.arr.iter_mut().for_each(|x| *x = None);
@@ -477,6 +499,15 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Get the first element, returning `None` if there are no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.first(), Some(&1));
+    /// ```
     #[inline]
     pub fn first(&self) -> Option<&T> {
         if N == 0 {
@@ -487,6 +518,15 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Get the last element, returning `None` if there are no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let my_rearr = rearr![1, 2, 3];
+    /// assert_eq!(my_rearr.last(), Some(&3));
+    /// ```
     #[inline]
     pub fn last(&self) -> Option<&T> {
         self.vec.last().or_else(|| self.arr[N - 1].as_ref())
@@ -508,24 +548,69 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 
     /// Get an iterator over the elements of the array.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let x = rearr![1, 2, 3];
+    /// let mut iter = x.iter();
+    ///
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
         self.arr.iter().filter_map(Option::as_ref).chain(self.vec.iter())
     }
 
     /// Get an iterator over the elements of the array, returning mutable references.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut x = rearr![1, 2, 3];
+    /// for i in x.iter_mut() {
+    ///    *i += 1;
+    /// }
+    /// assert_eq!(x.to_vec(), vec![2, 3, 4]);
+    /// ```
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
         self.arr.iter_mut().filter_map(Option::as_mut).chain(self.vec.iter_mut())
     }
 
     /// Extend this array with all the elements from the given iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut x = rearr![1, 2, 3];
+    /// x.extend(vec![4, 5, 6]);
+    /// assert_eq!(x.to_vec(), vec![1, 2, 3, 4, 5, 6]);
+    /// ```
     #[inline]
     pub fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         iter.into_iter().for_each(|x| self.push(x));
     }
 
     /// Get this [`ReArr`] represented as a [`Vec`], borrowing data instead of cloning it.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let x = rearr![1, 2, 3];
+    /// assert_eq!(x.as_vec(), vec![&1, &2, &3]);
+    /// ```
     #[inline]
     pub fn as_vec(&self) -> Vec<&T> {
         self.iter().collect()
@@ -536,6 +621,15 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// Get this [`ReArr`] represented as a [`Vec`].
     ///
     /// [`Vec`]: std::vec::Vec
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let x = rearr![1, 2, 3];
+    /// assert_eq!(x.to_vec(), vec![1, 2, 3]);
+    /// ```
     #[inline]
     pub fn to_vec(&self) -> Vec<T> {
         self.iter().cloned().collect()
@@ -545,14 +639,40 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     ///
     /// If `new_len` is greater than `len`, the [`ReArr`] is extended by the
     /// difference, with each additional slot filled with `val`.
+    ///
+    /// If `new_len` is less than `len`, the [`ReArr`] is truncated.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{rearr, ReArr};
+    ///
+    /// let mut x = rearr![1, 2, 3];
+    /// x.resize(5, 0);
+    /// assert_eq!(x.to_vec(), vec![1, 2, 3, 0, 0]);
+    /// x.resize(2, 0);
+    /// assert_eq!(x.to_vec(), vec![1, 2]);
+    /// x.resize(5, 0);
+    /// assert_eq!(x.to_vec(), vec![1, 2, 0, 0, 0]);
+    /// ```
     #[inline]
     pub fn resize(&mut self, new_len: usize, val: T) {
+        let num_items = self.len();
+
         if new_len >= N {
+            if num_items < N {
+                self.arr[num_items..N].fill(Some(val.clone()));
+            }
+
             self.vec.resize(new_len - N, val);
         } else {
-            self.arr[..new_len].iter_mut().for_each(|x| *x = Some(val.clone()));
-            self.arr[new_len..].iter_mut().for_each(|x| *x = None);
-            self.vec = Vec::new();
+            self.vec.clear();
+
+            if new_len > num_items {
+                self.arr[..new_len].fill(Some(val));
+            } else {
+                self.arr[new_len..].fill(None);
+            }
         }
     }
 }
