@@ -14,7 +14,7 @@
 //! A quick look at a basic example and some methods that are available:
 //!
 //! ```rust
-//! use combo_vec::{rearr, ReArr};
+//! use combo_vec::rearr;
 //!
 //! let mut resizeable_vec = rearr![1, 2, 3];
 //! // Allocate an extra element on the heap
@@ -52,7 +52,7 @@
 //! No Copy or Default traits required.
 //!
 //! ```rust
-//! use combo_vec::{rearr, ReArr};
+//! use combo_vec::rearr;
 //!
 //! // Easily allocate a new ReArr where 16 elements can be stored on the stack.
 //! let default_f32_vec = rearr![f32];
@@ -119,19 +119,19 @@ use std::{
 #[macro_export]
 macro_rules! rearr {
     () => (
-        ReArr::new()
+        $crate::ReArr::new()
     );
     ($type:ty) => (
-        ReArr::<$type, 16>::new()
+        $crate::ReArr::<$type, 16>::new()
     );
     ($type:ty; $n:literal) => (
-        ReArr::<$type, $n>::new()
+        $crate::ReArr::<$type, $n>::new()
     );
     ($elem:expr; $n:expr) => (
-        ReArr::from_arr([Some($elem); $n])
+        $crate::ReArr::from_arr([Some($elem); $n])
     );
     ($($x:expr),+ $(,)?) => (
-        ReArr::from_arr([$(Some($x)),+])
+        $crate::ReArr::from_arr([$(Some($x)),+])
     );
 }
 
@@ -171,12 +171,14 @@ pub struct ReArr<T, const N: usize> {
 }
 
 impl<T: PartialOrd, const N: usize> PartialOrd for ReArr<T, N> {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
 impl<T: Ord, const N: usize> Ord for ReArr<T, N> {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.iter().cmp(other.iter())
     }
@@ -237,7 +239,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// let my_rearr2 = rearr![4, 5, 6];
@@ -289,7 +291,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// my_rearr.push(4);
@@ -310,7 +312,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.pop(), Some(3));
@@ -333,7 +335,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.get(0), Some(&1));
@@ -356,7 +358,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     ///
@@ -380,7 +382,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.spilled(), false);
@@ -398,7 +400,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.stack_len(), 3);
@@ -415,7 +417,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.heap_len(), 0);
@@ -432,7 +434,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.len(), 3);
@@ -449,7 +451,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![i32; 3];
     /// assert_eq!(my_rearr.len(), 0);
@@ -465,7 +467,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![i32; 3];
     /// assert_eq!(my_rearr.len(), 0);
@@ -481,7 +483,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![i32; 3];
     /// assert_eq!(my_rearr.len(), 0);
@@ -499,7 +501,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3, 4, 5];
     /// my_rearr.truncate(3);
@@ -522,7 +524,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3, 4, 5];
     /// my_rearr.clear();
@@ -539,7 +541,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.first(), Some(&1));
@@ -558,7 +560,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// *my_rearr.first_mut().unwrap() = 4;
@@ -578,7 +580,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.last(), Some(&3));
@@ -597,7 +599,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![1, 2, 3];
     /// *my_rearr.last_mut().unwrap() = 4;
@@ -617,7 +619,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut my_rearr = rearr![i32; 3];
     /// assert!(my_rearr.is_empty());
@@ -632,7 +634,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let x = rearr![1, 2, 3];
     /// let mut iter = x.iter();
@@ -652,7 +654,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut x = rearr![1, 2, 3];
     /// for i in x.iter_mut() {
@@ -670,7 +672,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut x = rearr![1, 2, 3];
     /// x.extend(vec![4, 5, 6]);
@@ -688,7 +690,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let x = rearr![1, 2, 3];
     /// assert_eq!(x.into_vec(), vec![1, 2, 3]);
@@ -703,7 +705,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let x = rearr![1, 2, 3];
     /// assert_eq!(x.ref_vec(), vec![&1, &2, &3]);
@@ -722,7 +724,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let x = rearr![1, 2, 3];
     /// assert_eq!(x.to_vec(), vec![1, 2, 3]);
@@ -742,7 +744,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut x = rearr![1, 2, 3];
     /// x.resize(5, 4);
@@ -783,7 +785,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::rearr;
     ///
     /// let mut x = rearr![1, 2, 3];
     /// x.resize_with(5, Default::default);

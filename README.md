@@ -15,7 +15,7 @@ The stack-allocated array is always used to store the first `N` elements, even w
 A quick look at a basic example and some methods that are available:
 
 ```rust
-use combo_vec::{rearr, ReArr};
+use combo_vec::rearr;
 
 let mut resizeable_vec = rearr![1, 2, 3];
 // Allocate an extra element on the heap
@@ -33,7 +33,7 @@ You can allocate memory on the stack for later use without settings values to th
 No Copy or Default traits required.
 
 ```rust
-use combo_vec::{rearr, ReArr};
+use combo_vec::rearr;
 
 // Easily allocate a new ReArr where 16 elements can be stored on the stack.
 let default_f32_vec = rearr![f32];
