@@ -164,10 +164,20 @@ macro_rules! rearr {
 /// // Fill the last element on the stack, then allocate the next two items on the heap
 /// my_rearr.extend([3, 4, 5]);
 /// ```
-#[derive(Clone)]
 pub struct ReArr<T, const N: usize> {
     arr: [Option<T>; N],
+    arr_len: usize,
     vec: Vec<T>,
+}
+
+impl<T: Clone, const N: usize> Clone for ReArr<T, N> {
+    fn clone(&self) -> Self {
+        Self {
+            arr: self.arr.clone(),
+            arr_len: self.arr_len,
+            vec: self.vec.clone(),
+        }
+    }
 }
 
 impl<T: PartialOrd, const N: usize> PartialOrd for ReArr<T, N> {
@@ -228,6 +238,7 @@ impl<T, const N: usize> ReArr<T, N> {
     pub const fn new() -> Self {
         Self {
             arr: [Self::DEFAULT_ARR_VALUE; N],
+            arr_len: 0,
             vec: Vec::new(),
         }
     }
@@ -281,7 +292,11 @@ impl<T, const N: usize> ReArr<T, N> {
     #[must_use]
     #[inline]
     pub const fn from_arr(arr: [Option<T>; N]) -> Self {
-        Self { arr, vec: Vec::new() }
+        Self {
+            arr,
+            arr_len: N,
+            vec: Vec::new(),
+        }
     }
 
     /// Push an element to the end of the array.
@@ -299,9 +314,9 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub fn push(&mut self, val: T) {
-        let stack_len = self.stack_len();
-        if stack_len < N {
-            self.arr[stack_len] = Some(val);
+        if self.arr_len < N {
+            self.arr[self.arr_len] = Some(val);
+            self.arr_len += 1;
         } else {
             self.vec.push(val);
         }
@@ -322,9 +337,9 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        let stack_len = self.stack_len();
-        if stack_len > 0 {
-            self.arr[stack_len - 1].take()
+        if self.arr_len > 0 {
+            self.arr_len -= 1;
+            self.arr[self.arr_len].take()
         } else {
             self.vec.pop()
         }
@@ -408,8 +423,8 @@ impl<T, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_rearr.stack_len(), 3);
     /// ```
     #[inline]
-    pub fn stack_len(&self) -> usize {
-        self.arr.iter().flatten().count()
+    pub const fn stack_len(&self) -> usize {
+        self.arr_len
     }
 
     /// How many elements are currently stored on the heap.
@@ -515,6 +530,7 @@ impl<T, const N: usize> ReArr<T, N> {
             self.vec.truncate(len - N);
         } else {
             self.arr[len..].iter_mut().for_each(|x| *x = None);
+            self.arr_len = len;
             self.vec.clear();
         }
     }
@@ -533,6 +549,7 @@ impl<T, const N: usize> ReArr<T, N> {
     #[inline]
     pub fn clear(&mut self) {
         self.arr.iter_mut().for_each(|x| *x = None);
+        self.arr_len = 0;
         self.vec.clear();
     }
 
@@ -646,7 +663,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
-        self.arr.iter().filter_map(Option::as_ref).chain(self.vec.iter())
+        self.arr[..self.arr_len].iter().filter_map(Option::as_ref).chain(self.vec.iter())
     }
 
     /// Get an iterator over the elements of the array, returning mutable references.
@@ -664,7 +681,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
-        self.arr.iter_mut().filter_map(Option::as_mut).chain(self.vec.iter_mut())
+        self.arr[..self.arr_len].iter_mut().filter_map(Option::as_mut).chain(self.vec.iter_mut())
     }
 
     /// Extend this array with all the elements from the given iterator.
@@ -760,6 +777,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
         if new_len >= N {
             if num_items < N {
                 self.arr[num_items..N].fill(Some(val.clone()));
+                self.arr_len = N;
             }
 
             self.vec.resize(new_len - N, val);
@@ -771,6 +789,8 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
             } else {
                 self.arr[new_len..].fill(None);
             }
+
+            self.arr_len = new_len;
         }
     }
 
@@ -801,6 +821,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
         if new_len >= N {
             if num_items < N {
                 self.arr[num_items..N].fill(Some(f()));
+                self.arr_len = N;
             }
 
             self.vec.resize_with(new_len - N, f);
@@ -812,6 +833,8 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
             } else {
                 self.arr[new_len..].fill(None);
             }
+
+            self.arr_len = new_len;
         }
     }
 }
@@ -847,6 +870,7 @@ impl<T> std::iter::FromIterator<T> for ReArr<T, 0> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
             arr: [],
+            arr_len: 0,
             vec: iter.into_iter().collect(),
         }
     }
