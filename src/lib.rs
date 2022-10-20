@@ -292,11 +292,7 @@ impl<T, const N: usize> ReArr<T, N> {
     #[must_use]
     #[inline]
     pub const fn from_arr(arr: [Option<T>; N]) -> Self {
-        Self {
-            arr,
-            arr_len: N,
-            vec: Vec::new(),
-        }
+        Self { arr, arr_len: N, vec: Vec::new() }
     }
 
     /// Push an element to the end of the array.
@@ -844,14 +840,22 @@ impl<T, const N: usize> std::ops::Index<usize> for ReArr<T, N> {
 
     #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
-        self.get(idx).unwrap()
+        if idx < N {
+            self.arr[idx].as_ref().unwrap()
+        } else {
+            &self.vec[idx - N]
+        }
     }
 }
 
 impl<T, const N: usize> std::ops::IndexMut<usize> for ReArr<T, N> {
     #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
-        self.get_mut(idx).unwrap()
+        if idx < N {
+            self.arr[idx].as_mut().unwrap()
+        } else {
+            &mut self.vec[idx - N]
+        }
     }
 }
 
