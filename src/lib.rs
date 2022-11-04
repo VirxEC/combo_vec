@@ -171,6 +171,7 @@ pub struct ReArr<T, const N: usize> {
 }
 
 impl<T: Clone, const N: usize> Clone for ReArr<T, N> {
+    #[inline]
     fn clone(&self) -> Self {
         Self {
             arr: self.arr.clone(),
@@ -328,16 +329,22 @@ impl<T, const N: usize> ReArr<T, N> {
     /// let mut my_rearr = rearr![1, 2, 3];
     /// assert_eq!(my_rearr.pop(), Some(3));
     /// assert_eq!(my_rearr.pop(), Some(2));
+    /// my_rearr.extend(rearr![4, 5, 6]);
+    /// assert_eq!(my_rearr.pop(), Some(6));
+    /// assert_eq!(my_rearr.pop(), Some(5));
+    /// assert_eq!(my_rearr.pop(), Some(4));
     /// assert_eq!(my_rearr.pop(), Some(1));
     /// assert_eq!(my_rearr.pop(), None);
     /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        if self.arr_len > 0 {
+        if !self.vec.is_empty() {
+            self.vec.pop()
+        } else if self.arr_len > 0 {
             self.arr_len -= 1;
             self.arr[self.arr_len].take()
         } else {
-            self.vec.pop()
+            None
         }
     }
 
@@ -768,26 +775,23 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// assert_eq!(x.to_vec(), vec![1, 2, 6, 6, 6]);
     /// ```
     pub fn resize(&mut self, new_len: usize, val: T) {
-        let num_items = self.len();
-
         if new_len >= N {
+            let num_items = self.len();
             if num_items < N {
                 self.arr[num_items..N].fill(Some(val.clone()));
                 self.arr_len = N;
             }
 
             self.vec.resize(new_len - N, val);
+            return;
+        } else if new_len > self.len() {
+            self.arr[..new_len].fill(Some(val));
         } else {
-            self.vec.clear();
-
-            if new_len > num_items {
-                self.arr[..new_len].fill(Some(val));
-            } else {
-                self.arr[new_len..].fill(None);
-            }
-
-            self.arr_len = new_len;
+            self.arr[new_len..].fill(None);
         }
+
+        self.arr_len = new_len;
+        self.vec.clear();
     }
 
     /// Resizes the [`ReArr`] in-place so that `len` is equal to `new_len`.
@@ -812,25 +816,95 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// assert_eq!(x.to_vec(), vec![1, 2, 0, 0, 0]);
     /// ```
     pub fn resize_with<F: FnMut() -> T>(&mut self, new_len: usize, mut f: F) {
-        let num_items = self.len();
-
         if new_len >= N {
+            let num_items = self.len();
             if num_items < N {
                 self.arr[num_items..N].fill(Some(f()));
                 self.arr_len = N;
             }
 
             self.vec.resize_with(new_len - N, f);
+            return;
+        } else if new_len > self.len() {
+            self.arr[..new_len].fill(Some(f()));
         } else {
-            self.vec.clear();
+            self.arr[new_len..].fill(None);
+        }
 
-            if new_len > num_items {
-                self.arr[..new_len].fill(Some(f()));
-            } else {
-                self.arr[new_len..].fill(None);
+        self.arr_len = new_len;
+        self.vec.clear();
+    }
+
+    /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::rearr;
+    ///
+    /// let mut x = rearr![1, 2, 3];
+    /// assert_eq!(x.remove(1), 2);
+    /// assert_eq!(x.to_vec(), vec![1, 3]);
+    /// x.extend([4, 5, 6]);
+    /// assert_eq!(x.to_vec(), vec![1, 3, 4, 5, 6]);
+    /// assert_eq!(x.remove(3), 5);
+    /// assert_eq!(x.to_vec(), vec![1, 3, 4, 6]);
+    /// ```
+    #[inline]
+    pub fn remove(&mut self, index: usize) -> T {
+        if index >= N {
+            self.vec.remove(index - N)
+        } else {
+            let val = self.arr[index].take().unwrap();
+
+            for i in index..self.arr_len - 1 {
+                self.arr[i] = self.arr[i + 1].take();
             }
 
-            self.arr_len = new_len;
+            if self.vec.is_empty() {
+                self.arr_len -= 1;
+            } else {
+                self.arr[N - 1] = Some(self.vec.remove(0));
+            }
+
+            val
+        }
+    }
+
+    /// Removes an element from the vector and returns it.
+    ///
+    /// The removed element is replaced by the last element of the vector.
+    ///
+    /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if `index` is out of bounds, or if it is the last value.
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use combo_vec::rearr;
+    /// 
+    /// let mut x = rearr![1, 2, 3, 4];
+    /// assert_eq!(x.swap_remove(1), 2);
+    /// assert_eq!(x.to_vec(), vec![1, 4, 3]);
+    /// x.extend([5, 6, 7]);
+    /// assert_eq!(x.to_vec(), vec![1, 4, 3, 5, 6, 7]);
+    /// assert_eq!(x.swap_remove(4), 6);
+    /// assert_eq!(x.to_vec(), vec![1, 4, 3, 5, 7]);
+    /// ```
+    #[inline]
+    pub fn swap_remove(&mut self, index: usize) -> T {
+        if index >= N {
+            self.vec.swap_remove(index - N)
+        } else {
+            let last_value = self.pop().unwrap();
+            self.arr[index].replace(last_value).unwrap()
         }
     }
 }
@@ -881,12 +955,14 @@ impl<T> std::iter::FromIterator<T> for ReArr<T, 0> {
 }
 
 impl<T: Debug, const N: usize> Debug for ReArr<T, N> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_struct("ReArr").field("arr", &self.arr).field("vec", &self.vec).finish()
     }
 }
 
 impl<T: Debug, const N: usize> Display for ReArr<T, N> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_list().entries(self.arr.iter().flatten()).entries(&self.vec).finish()
     }

@@ -1,6 +1,6 @@
 [package]
 name = "combo_vec"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 authors = ["VirxEC"]
 description = "An array that can be resized at runtime but allocated stack space at compile time and doesn't move any data off the stack when it overflows"
@@ -13,7 +13,7 @@ categories = ["data-structures"]
 
 [profile.release]
 codegen-units = 1
-lto = "fat"
+lto = true
 panic = "abort"
 
 [dev-dependencies]
