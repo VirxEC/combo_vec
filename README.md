@@ -10,6 +10,14 @@ This works by allocating an array of `T` on the stack, and then using a Vec on t
 
 The stack-allocated array is always used to store the first `N` elements, even when the array is resized.
 
+## Why use combo_vec
+
+This is mostly used for when you know the maximum number of elements that will be stored 99% if the time, but don't want to cause errors in the last 1% and also won't want to give up on the performance of using the stack instead of the heap most of the time.
+
+`ReArr` also implemented many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
+
+In the real world I've seen a performance increase by using `ReArr` over `Vec` on memory-bandwidth limited devices in situations where the `Vec` is being pushed and popped a lot from. I found this performance increase and use `ReArr` in the `rl_ball_sym` crate for this performance bump.
+
 ## Examples
 
 A quick look at a basic example and some methods that are available:
@@ -55,13 +63,34 @@ const SOME_ITEMS: ReArr<i8, 3> = rearr![1, 2, 3];
 const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
 
 // Infer the type and size of the ReArr
-const NO_STACK_F32: ReArr<f32, 0> = rearr![];
+const NO_STACK_F32: ReArr<f32, 13> = rearr![];
 
-// No const-initialization is needed to create a ReArr with allocated elements on the stack
+// No const default implementation is needed to create a ReArr with allocated elements on the stack
 use std::collections::HashMap;
 const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![];
 
 /// Create a global-state RwLock that can store a ReArr 
 use std::sync::RwLock;
 static PROGRAM_STATE: RwLock<ReArr<&str, 20>> = RwLock::new(rearr![]);
+```
+
+### Go fast with const & copy
+
+Making an entire, new `ReArr` at runtime can be slower than just allocating a new array or a new vector - because it needs to do both.
+
+We can take advantage of `ReArr` being a `Copy` type, and use it to create a new `ReArr` in a const context then copy it to our runtime variable. This is much faster than creating a new `ReArr` at runtime. `T` does _not_ need to be `Copy`.
+
+Here's a basic look at what this looks like:
+
+```rust
+use combo_vec::{rearr, ReArr};
+
+const SOME_ITEMS: ReArr<String, 2> = rearr![];
+
+for _ in 0..5 {
+    let mut empty_rearr = SOME_ITEMS;
+    empty_rearr.push("Hello".to_string());
+    empty_rearr.push("World".to_string());
+    println!("{}!", empty_rearr.join(" "));
+}
 ```

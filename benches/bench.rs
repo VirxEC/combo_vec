@@ -68,4 +68,4 @@ fn get_panic(c: &mut Criterion) {
 criterion_group!(gets, get, get_panic);
 criterion_group!(news, new, new_from_arr);
 criterion_group!(pushes, normal_push, normal_push_precap, push, push_clone_const);
-criterion_main!(/*gets, news, */ pushes);
+criterion_main!(gets, news, pushes);

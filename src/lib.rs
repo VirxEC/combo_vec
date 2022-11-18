@@ -31,6 +31,7 @@
 //! assert_eq!(resizeable_vec[1], 2);
 //! assert_eq!(resizeable_vec.last(), Some(&5));
 //! assert_eq!(resizeable_vec.to_vec(), vec![1, 2, 3, 4, 5]);
+//! assert_eq!(resizeable_vec.join(", "), "1, 2, 3, 4, 5");
 //!
 //! // The amount of elements currently stored on the stack
 //! assert_eq!(resizeable_vec.stack_len(), 3);
@@ -57,7 +58,7 @@
 //! // Easily allocate a new ReArr where 16 elements can be stored on the stack.
 //! let default_f32_vec = rearr![f32];
 //!
-//! // Allocate a new, empty ReArr with 17 elements abled to be stored on the stack.
+//! // No const default implementation is needed to create a ReArr with allocated elements on the stack
 //! let empty_f32_vec = rearr![f32; 17];
 //!
 //! // An empty array of hashmaps (which can't be initialized in const contexts) can be allocated space on the stack.
@@ -78,7 +79,7 @@
 //! const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
 //!
 //! // Infer the type and size of the ReArr
-//! const INFER_F32: ReArr<f32, 0> = rearr![];
+//! const INFER_F32: ReArr<f32, 13> = rearr![];
 //!
 //! // No const-initialization is needed to create a ReArr with allocated elements on the stack
 //! use std::collections::HashMap;
@@ -87,6 +88,27 @@
 //! /// Create a global-state RwLock that can store a ReArr
 //! use std::sync::RwLock;
 //! static PROGRAM_STATE: RwLock<ReArr<&str, 20>> = RwLock::new(rearr![]);
+//! ```
+//!
+//! ### Go fast with const & copy
+//!
+//! Making an entire, new `ReArr` at runtime can be slower than just allocating a new array or a new vector - because it needs to do both.
+//!
+//! We can take advantage of `ReArr` being a `Copy` type, and use it to create a new `ReArr` in a const context then copy it to our runtime variable. This is much faster than creating a new `ReArr` at runtime.
+//!
+//! Here's a basic look at what this looks like:
+//! 
+//! ```rust
+//! use combo_vec::{rearr, ReArr};
+//!
+//! const SOME_ITEMS: ReArr<String, 2> = rearr![];
+//!
+//! for _ in 0..5 {
+//!     let mut empty_rearr = SOME_ITEMS;
+//!     empty_rearr.push("Hello".to_string());
+//!     empty_rearr.push("World".to_string());
+//!     println!("{}!", empty_rearr.join(" "));
+//! }
 //! ```
 
 use std::{
@@ -880,16 +902,16 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// The removed element is replaced by the last element of the vector.
     ///
     /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if `index` is out of bounds, or if it is the last value.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use combo_vec::rearr;
-    /// 
+    ///
     /// let mut x = rearr![1, 2, 3, 4];
     /// assert_eq!(x.swap_remove(1), 2);
     /// assert_eq!(x.to_vec(), vec![1, 4, 3]);
@@ -906,6 +928,29 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
             let last_value = self.pop().unwrap();
             self.arr[index].replace(last_value).unwrap()
         }
+    }
+}
+
+impl<T: ToString, const N: usize> ReArr<T, N> {
+    /// Joins the [`ReArr`] into a string with a separator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use combo_vec::rearr;
+    ///
+    /// let x = rearr![1, 2, 3];
+    /// assert_eq!(x.join(", "), "1, 2, 3");
+    /// ```
+    pub fn join(&self, sep: &str) -> String {
+        self.iter().enumerate().fold(String::new(), |mut s, (i, item)| {
+            if i != 0 {
+                s.push_str(sep);
+            }
+
+            s.push_str(&item.to_string());
+            s
+        })
     }
 }
 
@@ -973,6 +1018,16 @@ mod tests {
     use super::ReArr;
 
     const DEFAULT_TEST_REARR: ReArr<i32, 3> = rearr![1, 2, 3];
+    const EMPTY_STRING_ALLOC: ReArr<String, 3> = rearr![];
+
+    #[test]
+    fn copy_string_rearr() {
+        let mut x = EMPTY_STRING_ALLOC;
+        x.push(String::from("hello"));
+        x.push(String::from("world"));
+        let final_sentance = vec![String::from("hello"), String::from("world")];
+        assert_eq!(final_sentance.join(" "), "hello world");
+    }
 
     #[test]
     fn make_new() {
