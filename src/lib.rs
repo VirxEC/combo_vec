@@ -70,7 +70,7 @@
 //!
 //! The main benefit of using the [`rearr!`] macro is that everything it does can be used in const contexts.
 //!
-//! This allows you to allocate a ReArr at the start of your program in a Mutex or RwLock, and have minimal runtime overhead.
+//! This allows you to allocate a [`ReArr`] at the start of your program in a `Mutex` or `RwLock`, and have minimal runtime overhead.
 //!
 //! ```rust
 //! use combo_vec::{rearr, ReArr};
@@ -243,7 +243,7 @@ impl<T: Default, const N: usize> Default for ReArr<T, N> {
 impl<T, const N: usize> ReArr<T, N> {
     const DEFAULT_ARR_VALUE: Option<T> = None;
 
-    /// Create a new, empty ReArr with with the ability for `N` element to be allocated on the stack.
+    /// Create a new, empty [`ReArr`] with with the ability for `N` element to be allocated on the stack.
     ///
     /// This is used by the [`rearr!`] macro, and you should consider using it instead.
     ///
