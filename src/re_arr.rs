@@ -13,6 +13,25 @@ use core::{
 };
 
 /// Easy way to create a new [`ReArr`] with elements.
+///
+/// ## Examples
+///
+/// ```rust
+/// use combo_vec::{re_arr, ReArr};
+///
+/// const SOME_ITEMS: ReArr<i8, 3> = re_arr![1, 2, 3];
+/// const MANY_ITEMS: ReArr<u16, 90> = re_arr![5; 90];
+/// const EXTRA_ITEMS: ReArr<&str, 5> = re_arr!["Hello", "world", "!"; None, None];
+///
+/// // Infer the type and size of the ComboVec
+/// const NO_STACK_F32: ReArr<f32, 0> = re_arr![];
+///
+/// // No const-initialization is needed to create a ComboVec with allocated elements on the stack
+/// use std::collections::HashMap;
+/// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = re_arr![];
+///
+/// let my_re_arr = re_arr![1, 2, 3];
+/// ```
 #[macro_export]
 macro_rules! re_arr {
     () => (
@@ -30,12 +49,43 @@ macro_rules! re_arr {
     ($($x:expr),+ $(,)?) => (
         $crate::ReArr::from_arr([$(Some($x)),+])
     );
+    ($($x:expr),+; $($rest:expr),*) => (
+        $crate::ReArr::from_arr_and_len(&[$(Some($x)),+, $($rest),*])
+    );
 }
 
 /// A [`ReArr`] is a fixed-size array with a variable number of elements.
+///
+/// Create a new [`ReArr`] using the [`re_arr!`] macro.
+///
+/// ## Examples
+///
+/// ```rust
+/// use combo_vec::{re_arr, ReArr};
+///
+/// const SOME_ITEMS: ReArr<i8, 3> = re_arr![1, 2, 3];
+/// const MANY_ITEMS: ReArr<u16, 90> = re_arr![5; 90];
+///
+/// // Infer the type and size of the ReArr
+/// const NO_STACK_F32: ReArr<f32, 0> = re_arr![];
+///
+/// // No const-initialization is needed to create a ReArr with allocated elements on the stack
+/// use std::collections::HashMap;
+/// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = re_arr![];
+///
+/// let mut my_re_arr = re_arr![1, 2, 3; None, None];
+/// // Allocate an extra element on the heap
+/// my_re_arr.push(4);
+/// assert_eq!(my_re_arr.len(), 4);
+/// // Truncate to only the first 2 elements
+/// my_re_arr.truncate(2);
+/// assert_eq!(my_re_arr.len(), 2);
+/// // Fill the last element on the stack, then allocate the next two items on the heap
+/// my_re_arr.extend([3, 4, 5]);
+/// ```
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct ReArr<T, const N: usize> {
-    arr: [Option<T>; N],
+    pub(crate) arr: [Option<T>; N],
     arr_len: usize,
 }
 
@@ -46,10 +96,61 @@ impl<T, const N: usize> Default for ReArr<T, N> {
     }
 }
 
+impl<T: Copy, const N: usize> ReArr<T, N> {
+    /// Create a new [`ReArr`] from an array.
+    ///
+    /// All slots must be populated with `Some` values until
+    /// the first `None` value is encountered, or the end of the array is reached.
+    /// After that, all remaining slots must be `None`.
+    ///
+    /// This function is forced to accept a reference to the array and then copy it
+    /// due to <https://github.com/rust-lang/rust/issues/80384>
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{re_arr, ReArr};
+    ///
+    /// let my_re_arr = ReArr::from_arr_and_len(&[Some(1), Some(2), Some(3), None, None]);
+    /// let convenient_re_arr = re_arr![1, 2, 3; None, None];
+    ///
+    /// assert_eq!(my_re_arr, convenient_re_arr);
+    /// assert_eq!(my_re_arr.len(), 3);
+    /// assert_eq!(my_re_arr.capacity(), 5);
+    /// ```
+    #[must_use]
+    #[inline]
+    pub const fn from_arr_and_len(arr: &[Option<T>; N]) -> Self {
+        let mut arr_len = 0;
+
+        while arr_len < N {
+            if arr[arr_len].is_none() {
+                break;
+            }
+
+            arr_len += 1;
+        }
+
+        Self { arr: *arr, arr_len }
+    }
+}
+
 impl<T, const N: usize> ReArr<T, N> {
     const DEFAULT_ARR_VALUE: Option<T> = None;
 
-    /// Create a new [`ReArr`].
+    /// Create a new, empty [`ReArr`] with the ability for `N` element to stored on the stack.
+    ///
+    /// This is used by the [`re_arr!`] macro, and you should consider using it instead.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{re_arr, ReArr};
+    ///
+    /// let my_re_arr = ReArr::<i32, 3>::new();
+    /// let convenient_re_arr = re_arr![i32; 3];
+    /// assert_eq!(my_re_arr, convenient_re_arr);
+    /// ```
     #[must_use]
     #[inline]
     pub const fn new() -> Self {
@@ -68,18 +169,11 @@ impl<T, const N: usize> ReArr<T, N> {
         Self { arr, arr_len: N }
     }
 
-    /// Create a new [`ReArr`] from an array.
-    ///
-    /// All slots must be populated with `Some` values until
-    /// the first `None` value is encountered, or the end of the array is reached.
-    /// After that, all remaining slots must be `None`.
-    #[must_use]
-    #[inline]
-    pub const fn from_arr_and_len(arr: [Option<T>; N], arr_len: usize) -> Self {
-        Self { arr, arr_len }
-    }
-
     /// Push an element to the end of the array.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the array is full.
     #[inline]
     pub fn push(&mut self, val: T) {
         self.arr[self.arr_len] = Some(val);
@@ -220,15 +314,6 @@ impl<T, const N: usize> ReArr<T, N> {
 
 impl<T: Clone, const N: usize> ReArr<T, N> {
     /// Get this [`ReArr`] represented as a [`Vec`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use combo_vec::combo_vec;
-    ///
-    /// let x = combo_vec![1, 2, 3];
-    /// assert_eq!(x.to_vec(), vec![1, 2, 3]);
-    /// ```
     #[cfg(feature = "alloc")]
     #[inline]
     pub fn to_vec(&self) -> Vec<T> {
@@ -242,14 +327,15 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     ///
     /// If `new_len` is less than `len`, the [`ReArr`] is truncated.
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// If `new_len` is greater than the length of the internal array.
     pub fn resize(&mut self, new_len: usize, val: T) {
         assert!(new_len <= N, "new length cannot be greater than the internal array length");
 
-        if new_len > self.len() {
-            self.arr[..new_len].fill(Some(val));
+        let len = self.len();
+        if new_len > len {
+            self.arr[len..new_len].fill(Some(val));
         } else {
             self.arr[new_len..].fill(None);
         }
@@ -264,15 +350,16 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     ///
     /// If `new_len` is less than `len`, the [`ReArr`] is truncated.vec()
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// If `new_len` is greater than the length of the internal array.
     /// ```
     pub fn resize_with<F: FnMut() -> T>(&mut self, new_len: usize, mut f: F) {
         assert!(new_len <= N, "new length cannot be greater than the internal array length");
 
-        if new_len > self.len() {
-            self.arr[..new_len].fill(Some(f()));
+        let len = self.len();
+        if new_len > len {
+            self.arr[len..new_len].fill(Some(f()));
         } else {
             self.arr[new_len..].fill(None);
         }
@@ -282,7 +369,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
 
     /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// Panics if `index` is out of bounds.
     #[inline]
@@ -304,7 +391,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     ///
     /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// Panics if `index` is out of bounds, or if it is the last value.
     #[inline]

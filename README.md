@@ -1,24 +1,30 @@
 # combo_vec
 
-[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/) 
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 
 [![forthebadge](https://forthebadge.com/images/badges/made-with-rust.svg)](https://forthebadge.com)
 
-"combo_vec" is a library for creating a "combo stack array-heap vector", or simply a resizable array.
+"combo_vec" is a library for creating a "combo stack array-heap vector", or simply a resizable array with a vector for extra allocations.
 
-Create a new `ComboVec` with the `combo_vec!` macro.
+Not only that, but this library has `ReArr` if you just want the resizable array part (which can be faster than even SmallVec.)
+
+Create a new `ComboVec` with the `combo_vec!` macro and a new `ReArr` with the `re_arr!` macro.
 
 This works by allocating an array of `T` on the stack, and then using a Vec on the heap for overflow.
 
 The stack-allocated array is always used to store the first `N` elements, even when the array is resized.
 
-## Why use combo_vec
+## Why use ComboVec
 
 This is mostly used for when you know the maximum number of elements that will be stored 99% if the time, but don't want to cause errors in the last 1% and also won't want to give up on the performance of using the stack instead of the heap most of the time.
 
 `ComboVec` also implemented many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
 In the real world I've seen a performance increase by using `ComboVec` over `Vec` on memory-bandwidth limited devices in situations where the `Vec` is being pushed and popped a lot from. I found this performance increase and use `ComboVec` in the `rl_ball_sym` crate for this performance bump.
+
+## Why use ReArr
+
+I've gotten performance bumps with `ReArr` over the similar type SmallVec.
 
 ## Examples
 
@@ -71,7 +77,7 @@ const NO_STACK_F32: ComboVec<f32, 13> = combo_vec![];
 use std::collections::HashMap;
 const EMPTY_HASHMAP_ALLOC: ComboVec<HashMap<&str, i32>, 3> = combo_vec![];
 
-/// Create a global-state RwLock that can store a ComboVec 
+/// Create a global-state RwLock that can store a ComboVec
 use std::sync::RwLock;
 static PROGRAM_STATE: RwLock<ComboVec<&str, 20>> = RwLock::new(combo_vec![]);
 ```

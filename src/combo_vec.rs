@@ -1,3 +1,4 @@
+use crate::ReArr;
 use alloc::{
     string::{String, ToString},
     vec::{IntoIter as VecIter, Vec},
@@ -20,6 +21,7 @@ use core::{
 ///
 /// const SOME_ITEMS: ComboVec<i8, 3> = combo_vec![1, 2, 3];
 /// const MANY_ITEMS: ComboVec<u16, 90> = combo_vec![5; 90];
+/// const EXTRA_ITEMS: ComboVec<&str, 5> = combo_vec!["Hello", "world", "!"; None, None];
 ///
 /// // Infer the type and size of the ComboVec
 /// const NO_STACK_F32: ComboVec<f32, 0> = combo_vec![];
@@ -46,6 +48,9 @@ macro_rules! combo_vec {
     );
     ($($x:expr),+ $(,)?) => (
         $crate::ComboVec::from_arr([$(Some($x)),+])
+    );
+    ($($x:expr),+; $($rest:expr),*) => (
+        $crate::ComboVec::from_arr_and_len(&[$(Some($x)),+, $($rest),*])
     );
 }
 
@@ -78,21 +83,10 @@ macro_rules! combo_vec {
 /// // Fill the last element on the stack, then allocate the next two items on the heap
 /// my_combo_vec.extend([3, 4, 5]);
 /// ```
+#[derive(Clone, Debug)]
 pub struct ComboVec<T, const N: usize> {
-    arr: [Option<T>; N],
-    arr_len: usize,
+    arr: ReArr<T, N>,
     vec: Vec<T>,
-}
-
-impl<T: Clone, const N: usize> Clone for ComboVec<T, N> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self {
-            arr: self.arr.clone(),
-            arr_len: self.arr_len,
-            vec: self.vec.clone(),
-        }
-    }
 }
 
 impl<T: PartialOrd, const N: usize> PartialOrd for ComboVec<T, N> {
@@ -132,10 +126,40 @@ impl<T: Default, const N: usize> Default for ComboVec<T, N> {
     }
 }
 
-impl<T, const N: usize> ComboVec<T, N> {
-    const DEFAULT_ARR_VALUE: Option<T> = None;
+impl<T: Copy, const N: usize> ComboVec<T, N> {
+    /// Create a [`ComboVec`] from a fixed size array.
+    ///
+    /// All slots must be populated with `Some` values until
+    /// the first `None` value is encountered, or the end of the array is reached.
+    /// After that, all remaining slots must be `None`.
+    ///
+    /// This function is forced to accept a reference to the array and then copy it
+    /// due to <https://github.com/rust-lang/rust/issues/80384>
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{combo_vec, ComboVec};
+    ///
+    /// let my_combo_vec = ComboVec::from_arr_and_len(&[Some(1), Some(2), Some(3), None, None]);
+    /// let convenient_combo_vec = combo_vec![1, 2, 3; None, None];
+    ///
+    /// assert_eq!(my_combo_vec, convenient_combo_vec);
+    /// assert_eq!(my_combo_vec.len(), 3);
+    /// assert_eq!(my_combo_vec.stack_capacity(), 5);
+    /// assert_eq!(my_combo_vec.heap_capacity(), 0);
+    /// assert_eq!(my_combo_vec.capacity(), 5);
+    /// ```
+    pub const fn from_arr_and_len(arr: &[Option<T>; N]) -> Self {
+        Self {
+            arr: ReArr::from_arr_and_len(arr),
+            vec: Vec::new(),
+        }
+    }
+}
 
-    /// Create a new, empty [`ComboVec`] with with the ability for `N` element to be allocated on the stack.
+impl<T, const N: usize> ComboVec<T, N> {
+    /// Create a new, empty [`ComboVec`] with the ability for `N` element to be allocated on the stack.
     ///
     /// This is used by the [`combo_vec!`] macro, and you should consider using it instead.
     ///
@@ -152,8 +176,7 @@ impl<T, const N: usize> ComboVec<T, N> {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            arr: [Self::DEFAULT_ARR_VALUE; N],
-            arr_len: 0,
+            arr: ReArr::new(),
             vec: Vec::new(),
         }
     }
@@ -201,37 +224,18 @@ impl<T, const N: usize> ComboVec<T, N> {
     ///
     /// let my_combo_vec = ComboVec::from_arr([Some(1), Some(2), Some(3)]);
     /// let convient_combo_vec = combo_vec![1, 2, 3];
+    ///
     /// assert_eq!(my_combo_vec, convient_combo_vec);
+    /// assert_eq!(my_combo_vec.len(), 3);
+    /// assert_eq!(my_combo_vec.stack_capacity(), 3);
+    /// assert_eq!(my_combo_vec.heap_capacity(), 0);
+    /// assert_eq!(my_combo_vec.capacity(), 3);
     /// ```
     #[must_use]
     #[inline]
     pub const fn from_arr(arr: [Option<T>; N]) -> Self {
         Self {
-            arr,
-            arr_len: N,
-            vec: Vec::new(),
-        }
-    }
-
-    /// Create a [`ComboVec`] from a fixed size array.
-    ///
-    /// All slots must be populated with `Some` values until
-    /// the first `None` value is encountered, or the end of the array is reached.
-    /// After that, all remaining slots must be `None`.
-    ///
-    /// ```rust
-    /// use combo_vec::{combo_vec, ComboVec};
-    ///
-    /// let my_combo_vec = ComboVec::from_arr_and_len([Some(1), Some(2), Some(3), None, None], 3);
-    /// assert_eq!(my_combo_vec.len(), 3);
-    /// assert_eq!(my_combo_vec.stack_capacity(), 5);
-    /// ```
-    #[must_use]
-    #[inline]
-    pub const fn from_arr_and_len(arr: [Option<T>; N], arr_len: usize) -> Self {
-        Self {
-            arr,
-            arr_len,
+            arr: ReArr::from_arr(arr),
             vec: Vec::new(),
         }
     }
@@ -240,7 +244,7 @@ impl<T, const N: usize> ComboVec<T, N> {
     ///
     /// If the array is full, the element will be pushed to the heap.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -251,9 +255,8 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```
     #[inline]
     pub fn push(&mut self, val: T) {
-        if self.arr_len < N {
-            self.arr[self.arr_len] = Some(val);
-            self.arr_len += 1;
+        if self.len() < N {
+            self.arr.push(val);
         } else {
             self.vec.push(val);
         }
@@ -261,7 +264,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Remove the last element from the array and return it, or None if it is empty.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -278,19 +281,16 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        if !self.vec.is_empty() {
-            self.vec.pop()
-        } else if self.arr_len > 0 {
-            self.arr_len -= 1;
-            self.arr[self.arr_len].take()
+        if self.vec.is_empty() {
+            self.arr.pop()
         } else {
-            None
+            self.vec.pop()
         }
     }
 
     /// Get any element from the array as a reference, returning `None` if out of bounds.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -305,7 +305,7 @@ impl<T, const N: usize> ComboVec<T, N> {
     #[inline]
     pub fn get(&self, idx: usize) -> Option<&T> {
         if idx < N {
-            self.arr[idx].as_ref()
+            self.arr.get(idx)
         } else {
             self.vec.get(idx - N)
         }
@@ -313,7 +313,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Get any element from the array as a mutable reference, `None` if out of bounds.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -329,7 +329,7 @@ impl<T, const N: usize> ComboVec<T, N> {
     #[inline]
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
         if idx < N {
-            self.arr[idx].as_mut()
+            self.arr.get_mut(idx)
         } else {
             self.vec.get_mut(idx - N)
         }
@@ -337,7 +337,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Whether or not where are any elements allocated on the heap instead of the stack
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -355,7 +355,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// How many elements are currently stored on the stack.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -367,12 +367,12 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```
     #[inline]
     pub const fn stack_len(&self) -> usize {
-        self.arr_len
+        self.arr.len()
     }
 
     /// How many elements are currently stored on the heap.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -389,7 +389,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// How many elements are currently stored.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -406,7 +406,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// How many elements can be stored on the stack.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -422,7 +422,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// How many elements can be stored on the currently allocated heap.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -438,7 +438,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// How many elements can be stored without reallocating anything.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -456,7 +456,7 @@ impl<T, const N: usize> ComboVec<T, N> {
     ///
     /// If `new_len` is greater than the current length, this has no effect.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -472,15 +472,14 @@ impl<T, const N: usize> ComboVec<T, N> {
         } else if len >= N {
             self.vec.truncate(len - N);
         } else {
-            self.arr[len..].iter_mut().for_each(|x| *x = None);
-            self.arr_len = len;
+            self.arr.truncate(len);
             self.vec.clear();
         }
     }
 
     /// Remove all elements from the array.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -491,14 +490,13 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```
     #[inline]
     pub fn clear(&mut self) {
-        self.arr.iter_mut().for_each(|x| *x = None);
-        self.arr_len = 0;
+        self.arr.clear();
         self.vec.clear();
     }
 
     /// Get the first element, returning `None` if there are no elements.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -511,13 +509,13 @@ impl<T, const N: usize> ComboVec<T, N> {
         if N == 0 {
             self.vec.first()
         } else {
-            self.arr[0].as_ref().or_else(|| self.vec.first())
+            self.arr.first()
         }
     }
 
     /// Get the first element as a mutable reference, returning `None` if there are no elements.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -531,13 +529,13 @@ impl<T, const N: usize> ComboVec<T, N> {
         if N == 0 {
             self.vec.first_mut()
         } else {
-            self.arr[0].as_mut().or_else(|| self.vec.first_mut())
+            self.arr.first_mut()
         }
     }
 
     /// Get the last element, returning `None` if there are no elements.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -550,13 +548,13 @@ impl<T, const N: usize> ComboVec<T, N> {
         if N == 0 {
             self.vec.last()
         } else {
-            self.vec.last().or_else(|| self.arr[N - 1].as_ref())
+            self.vec.last().or_else(|| self.arr.last())
         }
     }
 
     /// Get the last element as a mutable reference, returning `None` if there are no elements.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -570,13 +568,13 @@ impl<T, const N: usize> ComboVec<T, N> {
         if N == 0 {
             self.vec.last_mut()
         } else {
-            self.vec.last_mut().or_else(|| self.arr[N - 1].as_mut())
+            self.vec.last_mut().or_else(|| self.arr.last_mut())
         }
     }
 
     /// Check if there are no elements.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -591,7 +589,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Get an iterator over the elements of the array.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -606,15 +604,12 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
-        self.arr[..self.arr_len]
-            .iter()
-            .filter_map(Option::as_ref)
-            .chain(self.vec.iter())
+        self.arr.iter().chain(self.vec.iter())
     }
 
     /// Get an iterator over the elements of the array, returning mutable references.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -627,15 +622,12 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
-        self.arr[..self.arr_len]
-            .iter_mut()
-            .filter_map(Option::as_mut)
-            .chain(self.vec.iter_mut())
+        self.arr.iter_mut().chain(self.vec.iter_mut())
     }
 
     /// Extend this array with all the elements from the given iterator.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -651,7 +643,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Get this [`ComboVec`] transformed into a [`Vec`].
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -666,7 +658,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Get this [`ComboVec`] represented as a [`Vec`], borrowing data instead of cloning it.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -683,7 +675,7 @@ impl<T, const N: usize> ComboVec<T, N> {
 impl<T: Clone, const N: usize> ComboVec<T, N> {
     /// Get this [`ComboVec`] represented as a [`Vec`].
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -703,7 +695,7 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
     ///
     /// If `new_len` is less than `len`, the [`ComboVec`] is truncated.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -718,22 +710,15 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
     /// ```
     pub fn resize(&mut self, new_len: usize, val: T) {
         if new_len >= N {
-            let num_items = self.len();
-            if num_items < N {
-                self.arr[num_items..N].fill(Some(val.clone()));
-                self.arr_len = N;
+            if self.len() < N {
+                self.arr.resize(N, val.clone());
             }
 
             self.vec.resize(new_len - N, val);
-            return;
-        } else if new_len > self.len() {
-            self.arr[..new_len].fill(Some(val));
         } else {
-            self.arr[new_len..].fill(None);
+            self.arr.resize(new_len, val);
+            self.vec.clear();
         }
-
-        self.arr_len = new_len;
-        self.vec.clear();
     }
 
     /// Resizes the [`ComboVec`] in-place so that `len` is equal to `new_len`.
@@ -744,7 +729,7 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
     ///
     /// If `new_len` is less than `len`, the [`ComboVec`] is truncated.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -759,31 +744,24 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
     /// ```
     pub fn resize_with<F: FnMut() -> T>(&mut self, new_len: usize, mut f: F) {
         if new_len >= N {
-            let num_items = self.len();
-            if num_items < N {
-                self.arr[num_items..N].fill(Some(f()));
-                self.arr_len = N;
+            for _ in self.len()..N {
+                self.arr.push(f());
             }
 
             self.vec.resize_with(new_len - N, f);
-            return;
-        } else if new_len > self.len() {
-            self.arr[..new_len].fill(Some(f()));
         } else {
-            self.arr[new_len..].fill(None);
+            self.arr.resize_with(new_len, f);
+            self.vec.clear();
         }
-
-        self.arr_len = new_len;
-        self.vec.clear();
     }
 
     /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -801,16 +779,10 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
         if index >= N {
             self.vec.remove(index - N)
         } else {
-            let val = self.arr[index].take().unwrap();
+            let val = self.arr.remove(index);
 
-            for i in index..self.arr_len - 1 {
-                self.arr[i] = self.arr[i + 1].take();
-            }
-
-            if self.vec.is_empty() {
-                self.arr_len -= 1;
-            } else {
-                self.arr[N - 1] = Some(self.vec.remove(0));
+            if !self.vec.is_empty() {
+                self.arr.push(self.vec.remove(0));
             }
 
             val
@@ -823,11 +795,11 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
     ///
     /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// Panics if `index` is out of bounds, or if it is the last value.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -844,9 +816,13 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
     pub fn swap_remove(&mut self, index: usize) -> T {
         if index >= N {
             self.vec.swap_remove(index - N)
+        } else if self.len() <= N {
+            self.arr.swap_remove(index)
         } else {
-            let last_value = self.pop().unwrap();
-            self.arr[index].replace(last_value).unwrap()
+            let last_value = self.vec.pop().unwrap();
+            // optimization that requires we reach into
+            // the underlying representation of the array
+            self.arr.arr[index].replace(last_value).unwrap()
         }
     }
 }
@@ -854,7 +830,7 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
 impl<T: ToString, const N: usize> ComboVec<T, N> {
     /// Joins the [`ComboVec`] into a string with a separator.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::combo_vec;
@@ -882,7 +858,7 @@ impl<T, const N: usize> ops::Index<usize> for ComboVec<T, N> {
     #[inline]
     fn index(&self, idx: usize) -> &Self::Output {
         if idx < N {
-            self.arr[idx].as_ref().unwrap()
+            &self.arr[idx]
         } else {
             &self.vec[idx - N]
         }
@@ -893,7 +869,7 @@ impl<T, const N: usize> ops::IndexMut<usize> for ComboVec<T, N> {
     #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         if idx < N {
-            self.arr[idx].as_mut().unwrap()
+            &mut self.arr[idx]
         } else {
             &mut self.vec[idx - N]
         }
@@ -906,7 +882,7 @@ impl<T, const N: usize> IntoIterator for ComboVec<T, N> {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.arr.into_iter().flatten().chain(self.vec)
+        self.arr.into_iter().chain(self.vec)
     }
 }
 
@@ -914,27 +890,15 @@ impl<T> FromIterator<T> for ComboVec<T, 0> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
-            arr: [],
-            arr_len: 0,
+            arr: ReArr::new(),
             vec: iter.into_iter().collect(),
         }
-    }
-}
-
-impl<T: Debug, const N: usize> Debug for ComboVec<T, N> {
-    #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.debug_struct("ComboVec")
-            .field("arr", &self.arr)
-            .field("arr_len", &self.arr_len)
-            .field("vec", &self.vec)
-            .finish()
     }
 }
 
 impl<T: Debug, const N: usize> Display for ComboVec<T, N> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.debug_list().entries(self.arr.iter().flatten()).entries(&self.vec).finish()
+        f.debug_list().entries(self.arr.iter()).entries(&self.vec).finish()
     }
 }
