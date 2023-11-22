@@ -18,13 +18,23 @@ The stack-allocated array is always used to store the first `N` elements, even w
 
 This is mostly used for when you know the maximum number of elements that will be stored 99% if the time, but don't want to cause errors in the last 1% and also won't want to give up on the performance of using the stack instead of the heap most of the time.
 
-`ComboVec` also implemented many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
+In a test of pushing 2048 (pre-allocated) elements, almost a 10% performance increase is shown:
 
-In the real world I've seen a performance increase by using `ComboVec` over `Vec` on memory-bandwidth limited devices in situations where the `Vec` is being pushed and popped a lot from. I found this performance increase and use `ComboVec` in the `rl_ball_sym` crate for this performance bump.
+- `ReArr`: 7.32 µs
+- `SmallVec`: 8.15 µs
+
+`ComboVec` also implements many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
 ## Why use ReArr
 
-I've gotten performance bumps with `ReArr` over the similar type SmallVec.
+I've gotten performance bumps with `ReArr` over the similar type SmallVec (both with and without it's `union` feature.)
+
+In a test of pushing 2048 (pre-allocated) elements, almost a 38% performance increase is shown:
+
+- `ReArr`: 5.00 µs
+- `SmallVec`: 8.15 µs
+
+`ReArr` also implements many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
 ## Examples
 
@@ -36,9 +46,9 @@ use combo_vec::combo_vec;
 let mut combo_vec = combo_vec![1, 2, 3];
 // Allocate an extra element on the heap
 combo_vec.push(4);
-// Truncate to only the first 2 elements
+// Truncate to only the first element
 combo_vec.truncate(2);
-// Fill the last element on the stack, then allocate the next two items on the heap
+// Fill the last elements on the stack, then allocate the next item on the heap
 combo_vec.extend([3, 4, 5]);
 ```
 
@@ -54,7 +64,7 @@ use combo_vec::combo_vec;
 // Easily allocate a new ComboVec where 16 elements can be stored on the stack.
 let default_f32_vec = combo_vec![f32];
 
-// Allocate a new, empty ComboVec with 17 elements abled to be stored on the stack.
+// Allocate a new, empty ComboVec with space to store 17 elements on the stack.
 let empty_f32_vec = combo_vec![f32; 17];
 ```
 

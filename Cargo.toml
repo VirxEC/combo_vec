@@ -28,6 +28,7 @@ panic = "abort"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
+smallvec = { version = "1.11.2", features = ["const_new", "const_generics", "union"] }
 
 [[bench]]
 name = "bench"
