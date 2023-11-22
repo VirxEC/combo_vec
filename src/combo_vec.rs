@@ -83,10 +83,19 @@ macro_rules! combo_vec {
 /// // Fill the last element on the stack, then allocate the next two items on the heap
 /// my_combo_vec.extend([3, 4, 5]);
 /// ```
-#[derive(Clone, Debug)]
 pub struct ComboVec<T, const N: usize> {
     arr: ReArr<T, N>,
     vec: Vec<T>,
+}
+
+impl<T: Clone, const N: usize> Clone for ComboVec<T, N> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            arr: self.arr.clone(),
+            vec: self.vec.clone(),
+        }
+    }
 }
 
 impl<T: PartialOrd, const N: usize> PartialOrd for ComboVec<T, N> {
@@ -893,6 +902,16 @@ impl<T> FromIterator<T> for ComboVec<T, 0> {
             arr: ReArr::new(),
             vec: iter.into_iter().collect(),
         }
+    }
+}
+
+impl<T: Debug, const N: usize> Debug for ComboVec<T, N> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("ComboVec")
+            .field("arr", &self.arr)
+            .field("vec", &self.vec)
+            .finish()
     }
 }
 

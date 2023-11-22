@@ -150,10 +150,5 @@ criterion_group!(
     push_no_vec,
     push_clone_const_no_vec,
 );
-criterion_group!(
-    smallvec,
-    smallvec_push,
-    smallvec_clone_const_push,
-    smallvec_push_big,
-);
+criterion_group!(smallvec, smallvec_push, smallvec_clone_const_push, smallvec_push_big);
 criterion_main!(smallvec, gets, news, pushes);

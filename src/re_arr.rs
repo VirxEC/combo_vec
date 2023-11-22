@@ -6,8 +6,9 @@ use alloc::{
 
 use core::{
     array::IntoIter as ArrayIter,
+    cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::Hash,
+    hash::{Hash, Hasher},
     iter::Flatten,
     ops,
 };
@@ -83,10 +84,49 @@ macro_rules! re_arr {
 /// // Fill the last element on the stack, then allocate the next two items on the heap
 /// my_re_arr.extend([3, 4, 5]);
 /// ```
-#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct ReArr<T, const N: usize> {
     pub(crate) arr: [Option<T>; N],
     arr_len: usize,
+}
+
+impl<T: Clone, const N: usize> Clone for ReArr<T, N> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            arr: self.arr.clone(),
+            arr_len: self.arr_len,
+        }
+    }
+}
+
+impl<T: PartialOrd, const N: usize> PartialOrd for ReArr<T, N> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+impl<T: Ord, const N: usize> Ord for ReArr<T, N> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.iter().cmp(other.iter())
+    }
+}
+
+impl<T: PartialEq, const N: usize> PartialEq for ReArr<T, N> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl<T: PartialEq + Eq, const N: usize> Eq for ReArr<T, N> {}
+
+impl<T: Hash, const N: usize> Hash for ReArr<T, N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.iter().for_each(|x| x.hash(state));
+    }
 }
 
 impl<T, const N: usize> Default for ReArr<T, N> {
@@ -441,6 +481,16 @@ impl<T, const N: usize> IntoIterator for ReArr<T, N> {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.arr.into_iter().flatten()
+    }
+}
+
+impl<T: Debug, const N: usize> Debug for ReArr<T, N> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("ReArr")
+            .field("arr", &self.arr)
+            .field("arr_len", &self.arr_len)
+            .finish()
     }
 }
 
