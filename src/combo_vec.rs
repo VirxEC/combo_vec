@@ -11,80 +11,80 @@ use core::{
     ops,
 };
 
-/// Easy creation of a new [`ReArr`].
+/// Easy creation of a new [`ComboVec`].
 ///
 /// ## Examples
 ///
 /// ```rust
-/// use combo_vec::{rearr, ReArr};
+/// use combo_vec::{combo_vec, ComboVec};
 ///
-/// const SOME_ITEMS: ReArr<i8, 3> = rearr![1, 2, 3];
-/// const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
+/// const SOME_ITEMS: ComboVec<i8, 3> = combo_vec![1, 2, 3];
+/// const MANY_ITEMS: ComboVec<u16, 90> = combo_vec![5; 90];
 ///
-/// // Infer the type and size of the ReArr
-/// const NO_STACK_F32: ReArr<f32, 0> = rearr![];
+/// // Infer the type and size of the ComboVec
+/// const NO_STACK_F32: ComboVec<f32, 0> = combo_vec![];
 ///
-/// // No const-initialization is needed to create a ReArr with allocated elements on the stack
+/// // No const-initialization is needed to create a ComboVec with allocated elements on the stack
 /// use std::collections::HashMap;
-/// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![];
+/// const EMPTY_HASHMAP_ALLOC: ComboVec<HashMap<&str, i32>, 3> = combo_vec![];
 ///
-/// let my_rearr = rearr![1, 2, 3];
+/// let my_combo_vec = combo_vec![1, 2, 3];
 /// ```
 #[macro_export]
-macro_rules! rearr {
+macro_rules! combo_vec {
     () => (
-        $crate::ReArr::new()
+        $crate::ComboVec::new()
     );
     ($type:ty) => (
-        $crate::ReArr::<$type, 16>::new()
+        $crate::ComboVec::<$type, 16>::new()
     );
     ($type:ty; $n:literal) => (
-        $crate::ReArr::<$type, $n>::new()
+        $crate::ComboVec::<$type, $n>::new()
     );
     ($elem:expr; $n:expr) => (
-        $crate::ReArr::from_arr([Some($elem); $n])
+        $crate::ComboVec::from_arr([Some($elem); $n])
     );
     ($($x:expr),+ $(,)?) => (
-        $crate::ReArr::from_arr([$(Some($x)),+])
+        $crate::ComboVec::from_arr([$(Some($x)),+])
     );
 }
 
 /// An array that can be resized at runtime, without moving any data off the stack.
 ///
-/// Create a new [`ReArr`] using the [`rearr!`] macro.
+/// Create a new [`ComboVec`] using the [`combo_vec!`] macro.
 ///
 /// ## Examples
 ///
 /// ```rust
-/// use combo_vec::{rearr, ReArr};
+/// use combo_vec::{combo_vec, ComboVec};
 ///
-/// const SOME_ITEMS: ReArr<i8, 3> = rearr![1, 2, 3];
-/// const MANY_ITEMS: ReArr<u16, 90> = rearr![5; 90];
+/// const SOME_ITEMS: ComboVec<i8, 3> = combo_vec![1, 2, 3];
+/// const MANY_ITEMS: ComboVec<u16, 90> = combo_vec![5; 90];
 ///
-/// // Infer the type and size of the ReArr
-/// const NO_STACK_F32: ReArr<f32, 0> = rearr![];
+/// // Infer the type and size of the ComboVec
+/// const NO_STACK_F32: ComboVec<f32, 0> = combo_vec![];
 ///
-/// // No const-initialization is needed to create a ReArr with allocated elements on the stack
+/// // No const-initialization is needed to create a ComboVec with allocated elements on the stack
 /// use std::collections::HashMap;
-/// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = rearr![];
+/// const EMPTY_HASHMAP_ALLOC: ComboVec<HashMap<&str, i32>, 3> = combo_vec![];
 ///
-/// let mut my_rearr = rearr![1, 2, 3];
+/// let mut my_combo_vec = combo_vec![1, 2, 3];
 /// // Allocate an extra element on the heap
-/// my_rearr.push(4);
-/// assert_eq!(my_rearr.len(), 4);
+/// my_combo_vec.push(4);
+/// assert_eq!(my_combo_vec.len(), 4);
 /// // Truncate to only the first 2 elements
-/// my_rearr.truncate(2);
-/// assert_eq!(my_rearr.len(), 2);
+/// my_combo_vec.truncate(2);
+/// assert_eq!(my_combo_vec.len(), 2);
 /// // Fill the last element on the stack, then allocate the next two items on the heap
-/// my_rearr.extend([3, 4, 5]);
+/// my_combo_vec.extend([3, 4, 5]);
 /// ```
-pub struct ReArr<T, const N: usize> {
+pub struct ComboVec<T, const N: usize> {
     arr: [Option<T>; N],
     arr_len: usize,
     vec: Vec<T>,
 }
 
-impl<T: Clone, const N: usize> Clone for ReArr<T, N> {
+impl<T: Clone, const N: usize> Clone for ComboVec<T, N> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -95,58 +95,58 @@ impl<T: Clone, const N: usize> Clone for ReArr<T, N> {
     }
 }
 
-impl<T: PartialOrd, const N: usize> PartialOrd for ReArr<T, N> {
+impl<T: PartialOrd, const N: usize> PartialOrd for ComboVec<T, N> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
-impl<T: Ord, const N: usize> Ord for ReArr<T, N> {
+impl<T: Ord, const N: usize> Ord for ComboVec<T, N> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
-impl<T: PartialEq, const N: usize> PartialEq for ReArr<T, N> {
+impl<T: PartialEq, const N: usize> PartialEq for ComboVec<T, N> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.iter().eq(other.iter())
     }
 }
 
-impl<T: PartialEq + Eq, const N: usize> Eq for ReArr<T, N> {}
+impl<T: PartialEq + Eq, const N: usize> Eq for ComboVec<T, N> {}
 
-impl<T: Hash, const N: usize> Hash for ReArr<T, N> {
+impl<T: Hash, const N: usize> Hash for ComboVec<T, N> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.iter().for_each(|x| x.hash(state));
     }
 }
 
-impl<T: Default, const N: usize> Default for ReArr<T, N> {
+impl<T: Default, const N: usize> Default for ComboVec<T, N> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T, const N: usize> ReArr<T, N> {
+impl<T, const N: usize> ComboVec<T, N> {
     const DEFAULT_ARR_VALUE: Option<T> = None;
 
-    /// Create a new, empty [`ReArr`] with with the ability for `N` element to be allocated on the stack.
+    /// Create a new, empty [`ComboVec`] with with the ability for `N` element to be allocated on the stack.
     ///
-    /// This is used by the [`rearr!`] macro, and you should consider using it instead.
+    /// This is used by the [`combo_vec!`] macro, and you should consider using it instead.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::{combo_vec, ComboVec};
     ///
-    /// let my_rearr = ReArr::<i32, 3>::new();
-    /// let convient_rearr = rearr![i32; 3];
-    /// assert_eq!(my_rearr, convient_rearr);
+    /// let my_combo_vec = ComboVec::<i32, 3>::new();
+    /// let convient_combo_vec = combo_vec![i32; 3];
+    /// assert_eq!(my_combo_vec, convient_combo_vec);
     /// ```
     #[inline]
     #[must_use]
@@ -165,25 +165,25 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// let my_rearr2 = rearr![4, 5, 6];
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// let my_combo_vec2 = combo_vec![4, 5, 6];
     ///
-    /// // How much space can be stored in my_rearr currently (length of stack + number of items in heap)
+    /// // How much space can be stored in my_combo_vec currently (length of stack + number of items in heap)
     /// // This is needed because if the stack isn't full and can store all our items, we don't want to allocate more space on the heap.
-    /// let my_rearr_capacity = my_rearr2.stack_capacity() + my_rearr.heap_len();
-    /// let extra_capacity = my_rearr_capacity - my_rearr.len();
+    /// let my_combo_vec_capacity = my_combo_vec2.stack_capacity() + my_combo_vec.heap_len();
+    /// let extra_capacity = my_combo_vec_capacity - my_combo_vec.len();
     ///
     /// // Check if we need to reallocate
-    /// if extra_capacity < my_rearr2.len() {
-    ///     my_rearr.reserve(my_rearr2.len() - extra_capacity);
+    /// if extra_capacity < my_combo_vec2.len() {
+    ///     my_combo_vec.reserve(my_combo_vec2.len() - extra_capacity);
     /// }
     ///
-    /// assert!(my_rearr.capacity() >= my_rearr.len() + my_rearr2.len());
+    /// assert!(my_combo_vec.capacity() >= my_combo_vec.len() + my_combo_vec2.len());
     ///
-    /// // Extend my_rearr with my_rearr2
-    /// my_rearr.extend(my_rearr2);
+    /// // Extend my_combo_vec with my_combo_vec2
+    /// my_combo_vec.extend(my_combo_vec2);
     /// ```
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
@@ -194,15 +194,15 @@ impl<T, const N: usize> ReArr<T, N> {
     ///
     /// Use Some is used for initialized values, and None is used for uninitialized values.
     ///
-    /// This is used by the [`rearr!`] macro, and you should consider using it instead.
+    /// This is used by the [`combo_vec!`] macro, and you should consider using it instead.
     /// Note that the macro can't create mixed initialized and uninitialized arrays, only one or the other.
     ///
     /// ```rust
-    /// use combo_vec::{rearr, ReArr};
+    /// use combo_vec::{combo_vec, ComboVec};
     ///
-    /// let my_rearr = ReArr::from_arr([Some(1), Some(2), Some(3)]);
-    /// let convient_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr, convient_rearr);
+    /// let my_combo_vec = ComboVec::from_arr([Some(1), Some(2), Some(3)]);
+    /// let convient_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec, convient_combo_vec);
     /// ```
     #[must_use]
     #[inline]
@@ -221,11 +221,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// my_rearr.push(4);
-    /// assert_eq!(my_rearr.to_vec(), vec![1, 2, 3, 4]);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// my_combo_vec.push(4);
+    /// assert_eq!(my_combo_vec.to_vec(), vec![1, 2, 3, 4]);
     /// ```
     #[inline]
     pub fn push(&mut self, val: T) {
@@ -242,17 +242,17 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.pop(), Some(3));
-    /// assert_eq!(my_rearr.pop(), Some(2));
-    /// my_rearr.extend(rearr![4, 5, 6]);
-    /// assert_eq!(my_rearr.pop(), Some(6));
-    /// assert_eq!(my_rearr.pop(), Some(5));
-    /// assert_eq!(my_rearr.pop(), Some(4));
-    /// assert_eq!(my_rearr.pop(), Some(1));
-    /// assert_eq!(my_rearr.pop(), None);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.pop(), Some(3));
+    /// assert_eq!(my_combo_vec.pop(), Some(2));
+    /// my_combo_vec.extend(combo_vec![4, 5, 6]);
+    /// assert_eq!(my_combo_vec.pop(), Some(6));
+    /// assert_eq!(my_combo_vec.pop(), Some(5));
+    /// assert_eq!(my_combo_vec.pop(), Some(4));
+    /// assert_eq!(my_combo_vec.pop(), Some(1));
+    /// assert_eq!(my_combo_vec.pop(), None);
     /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
@@ -271,13 +271,13 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.get(0), Some(&1));
-    /// assert_eq!(my_rearr.get(1), Some(&2));
-    /// assert_eq!(my_rearr.get(2), Some(&3));
-    /// assert_eq!(my_rearr.get(3), None);
+    /// let my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.get(0), Some(&1));
+    /// assert_eq!(my_combo_vec.get(1), Some(&2));
+    /// assert_eq!(my_combo_vec.get(2), Some(&3));
+    /// assert_eq!(my_combo_vec.get(3), None);
     /// ```
     #[must_use]
     #[inline]
@@ -294,15 +294,15 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
     ///
-    /// if let Some(x) = my_rearr.get_mut(0) {
+    /// if let Some(x) = my_combo_vec.get_mut(0) {
     ///     *x = 4;
     /// }
     ///
-    /// assert_eq!(my_rearr.to_vec(), vec![4, 2, 3]);
+    /// assert_eq!(my_combo_vec.to_vec(), vec![4, 2, 3]);
     #[must_use]
     #[inline]
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
@@ -318,13 +318,13 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.spilled(), false);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.spilled(), false);
     ///
-    /// my_rearr.push(4);
-    /// assert_eq!(my_rearr.spilled(), true);
+    /// my_combo_vec.push(4);
+    /// assert_eq!(my_combo_vec.spilled(), true);
     /// ```
     #[inline]
     pub fn spilled(&self) -> bool {
@@ -336,12 +336,12 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.stack_len(), 3);
-    /// my_rearr.push(4);
-    /// assert_eq!(my_rearr.stack_len(), 3);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.stack_len(), 3);
+    /// my_combo_vec.push(4);
+    /// assert_eq!(my_combo_vec.stack_len(), 3);
     /// ```
     #[inline]
     pub const fn stack_len(&self) -> usize {
@@ -353,12 +353,12 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.heap_len(), 0);
-    /// my_rearr.push(4);
-    /// assert_eq!(my_rearr.heap_len(), 1);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.heap_len(), 0);
+    /// my_combo_vec.push(4);
+    /// assert_eq!(my_combo_vec.heap_len(), 1);
     /// ```
     #[inline]
     pub fn heap_len(&self) -> usize {
@@ -370,12 +370,12 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.len(), 3);
-    /// my_rearr.push(4);
-    /// assert_eq!(my_rearr.len(), 4);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.len(), 3);
+    /// my_combo_vec.push(4);
+    /// assert_eq!(my_combo_vec.len(), 4);
     /// ```
     #[inline]
     pub fn len(&self) -> usize {
@@ -387,11 +387,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![i32; 3];
-    /// assert_eq!(my_rearr.len(), 0);
-    /// assert_eq!(my_rearr.stack_capacity(), 3);
+    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// assert_eq!(my_combo_vec.len(), 0);
+    /// assert_eq!(my_combo_vec.stack_capacity(), 3);
     /// ```
     #[inline]
     pub const fn stack_capacity(&self) -> usize {
@@ -403,11 +403,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![i32; 3];
-    /// assert_eq!(my_rearr.len(), 0);
-    /// assert_eq!(my_rearr.heap_capacity(), 0);
+    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// assert_eq!(my_combo_vec.len(), 0);
+    /// assert_eq!(my_combo_vec.heap_capacity(), 0);
     /// ```
     #[inline]
     pub fn heap_capacity(&self) -> usize {
@@ -419,11 +419,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![i32; 3];
-    /// assert_eq!(my_rearr.len(), 0);
-    /// assert_eq!(my_rearr.capacity(), 3);
+    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// assert_eq!(my_combo_vec.len(), 0);
+    /// assert_eq!(my_combo_vec.capacity(), 3);
     /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -437,11 +437,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3, 4, 5];
-    /// my_rearr.truncate(3);
-    /// assert_eq!(my_rearr.to_vec(), vec![1, 2, 3]);
+    /// let mut my_combo_vec = combo_vec![1, 2, 3, 4, 5];
+    /// my_combo_vec.truncate(3);
+    /// assert_eq!(my_combo_vec.to_vec(), vec![1, 2, 3]);
     /// ```
     #[inline]
     pub fn truncate(&mut self, len: usize) {
@@ -461,11 +461,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3, 4, 5];
-    /// my_rearr.clear();
-    /// assert!(my_rearr.is_empty());
+    /// let mut my_combo_vec = combo_vec![1, 2, 3, 4, 5];
+    /// my_combo_vec.clear();
+    /// assert!(my_combo_vec.is_empty());
     /// ```
     #[inline]
     pub fn clear(&mut self) {
@@ -479,10 +479,10 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.first(), Some(&1));
+    /// let my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.first(), Some(&1));
     /// ```
     #[inline]
     pub fn first(&self) -> Option<&T> {
@@ -498,11 +498,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// *my_rearr.first_mut().unwrap() = 4;
-    /// assert_eq!(my_rearr.first(), Some(&4));
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// *my_combo_vec.first_mut().unwrap() = 4;
+    /// assert_eq!(my_combo_vec.first(), Some(&4));
     /// ```
     #[inline]
     pub fn first_mut(&mut self) -> Option<&mut T> {
@@ -518,10 +518,10 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let my_rearr = rearr![1, 2, 3];
-    /// assert_eq!(my_rearr.last(), Some(&3));
+    /// let my_combo_vec = combo_vec![1, 2, 3];
+    /// assert_eq!(my_combo_vec.last(), Some(&3));
     /// ```
     #[inline]
     pub fn last(&self) -> Option<&T> {
@@ -537,11 +537,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![1, 2, 3];
-    /// *my_rearr.last_mut().unwrap() = 4;
-    /// assert_eq!(my_rearr.last(), Some(&4));
+    /// let mut my_combo_vec = combo_vec![1, 2, 3];
+    /// *my_combo_vec.last_mut().unwrap() = 4;
+    /// assert_eq!(my_combo_vec.last(), Some(&4));
     /// ```
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
@@ -557,10 +557,10 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut my_rearr = rearr![i32; 3];
-    /// assert!(my_rearr.is_empty());
+    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// assert!(my_combo_vec.is_empty());
     /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -572,9 +572,9 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let x = rearr![1, 2, 3];
+    /// let x = combo_vec![1, 2, 3];
     /// let mut iter = x.iter();
     ///
     /// assert_eq!(iter.next(), Some(&1));
@@ -595,9 +595,9 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut x = rearr![1, 2, 3];
+    /// let mut x = combo_vec![1, 2, 3];
     /// for i in x.iter_mut() {
     ///    *i += 1;
     /// }
@@ -616,9 +616,9 @@ impl<T, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut x = rearr![1, 2, 3];
+    /// let mut x = combo_vec![1, 2, 3];
     /// x.extend(vec![4, 5, 6]);
     /// assert_eq!(x.to_vec(), vec![1, 2, 3, 4, 5, 6]);
     /// ```
@@ -627,16 +627,16 @@ impl<T, const N: usize> ReArr<T, N> {
         iter.into_iter().for_each(|x| self.push(x));
     }
 
-    /// Get this [`ReArr`] transformed into a [`Vec`].
+    /// Get this [`ComboVec`] transformed into a [`Vec`].
     ///
     /// [`Vec`]: std::vec::Vec
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let x = rearr![1, 2, 3];
+    /// let x = combo_vec![1, 2, 3];
     /// assert_eq!(x.into_vec(), vec![1, 2, 3]);
     /// ```
     #[inline]
@@ -644,14 +644,14 @@ impl<T, const N: usize> ReArr<T, N> {
         self.into_iter().collect()
     }
 
-    /// Get this [`ReArr`] represented as a [`Vec`], borrowing data instead of cloning it.
+    /// Get this [`ComboVec`] represented as a [`Vec`], borrowing data instead of cloning it.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let x = rearr![1, 2, 3];
+    /// let x = combo_vec![1, 2, 3];
     /// assert_eq!(x.ref_vec(), vec![&1, &2, &3]);
     /// ```
     #[inline]
@@ -660,17 +660,17 @@ impl<T, const N: usize> ReArr<T, N> {
     }
 }
 
-impl<T: Clone, const N: usize> ReArr<T, N> {
-    /// Get this [`ReArr`] represented as a [`Vec`].
+impl<T: Clone, const N: usize> ComboVec<T, N> {
+    /// Get this [`ComboVec`] represented as a [`Vec`].
     ///
     /// [`Vec`]: std::vec::Vec
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let x = rearr![1, 2, 3];
+    /// let x = combo_vec![1, 2, 3];
     /// assert_eq!(x.to_vec(), vec![1, 2, 3]);
     /// ```
     #[inline]
@@ -678,19 +678,19 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
         self.iter().cloned().collect()
     }
 
-    /// Resizes the [`ReArr`] in-place so that `len` is equal to `new_len`.
+    /// Resizes the [`ComboVec`] in-place so that `len` is equal to `new_len`.
     ///
-    /// If `new_len` is greater than `len`, the [`ReArr`] is extended by the
+    /// If `new_len` is greater than `len`, the [`ComboVec`] is extended by the
     /// difference, with each additional slot filled with `val`.
     ///
-    /// If `new_len` is less than `len`, the [`ReArr`] is truncated.
+    /// If `new_len` is less than `len`, the [`ComboVec`] is truncated.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut x = rearr![1, 2, 3];
+    /// let mut x = combo_vec![1, 2, 3];
     /// x.resize(5, 4);
     /// assert_eq!(x.to_vec(), vec![1, 2, 3, 4, 4]);
     /// x.resize(2, 5);
@@ -718,20 +718,20 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
         self.vec.clear();
     }
 
-    /// Resizes the [`ReArr`] in-place so that `len` is equal to `new_len`.
+    /// Resizes the [`ComboVec`] in-place so that `len` is equal to `new_len`.
     ///
-    /// If `new_len` is greater than `len`, the [`ReArr`] is extended by the
+    /// If `new_len` is greater than `len`, the [`ComboVec`] is extended by the
     /// difference, with each additional slot filled with the result of calling
     /// the closure `f`.
     ///
-    /// If `new_len` is less than `len`, the [`ReArr`] is truncated.
+    /// If `new_len` is less than `len`, the [`ComboVec`] is truncated.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut x = rearr![1, 2, 3];
+    /// let mut x = combo_vec![1, 2, 3];
     /// x.resize_with(5, Default::default);
     /// assert_eq!(x.to_vec(), vec![1, 2, 3, 0, 0]);
     /// x.resize_with(2, Default::default);
@@ -768,9 +768,9 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut x = rearr![1, 2, 3];
+    /// let mut x = combo_vec![1, 2, 3];
     /// assert_eq!(x.remove(1), 2);
     /// assert_eq!(x.to_vec(), vec![1, 3]);
     /// x.extend([4, 5, 6]);
@@ -812,9 +812,9 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let mut x = rearr![1, 2, 3, 4];
+    /// let mut x = combo_vec![1, 2, 3, 4];
     /// assert_eq!(x.swap_remove(1), 2);
     /// assert_eq!(x.to_vec(), vec![1, 4, 3]);
     /// x.extend([5, 6, 7]);
@@ -833,15 +833,15 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     }
 }
 
-impl<T: ToString, const N: usize> ReArr<T, N> {
-    /// Joins the [`ReArr`] into a string with a separator.
+impl<T: ToString, const N: usize> ComboVec<T, N> {
+    /// Joins the [`ComboVec`] into a string with a separator.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use combo_vec::rearr;
+    /// use combo_vec::combo_vec;
     ///
-    /// let x = rearr![1, 2, 3];
+    /// let x = combo_vec![1, 2, 3];
     /// assert_eq!(x.join(", "), "1, 2, 3");
     /// ```
     pub fn join(&self, sep: &str) -> String {
@@ -856,7 +856,7 @@ impl<T: ToString, const N: usize> ReArr<T, N> {
     }
 }
 
-impl<T, const N: usize> ops::Index<usize> for ReArr<T, N> {
+impl<T, const N: usize> ops::Index<usize> for ComboVec<T, N> {
     type Output = T;
 
     #[inline]
@@ -869,7 +869,7 @@ impl<T, const N: usize> ops::Index<usize> for ReArr<T, N> {
     }
 }
 
-impl<T, const N: usize> ops::IndexMut<usize> for ReArr<T, N> {
+impl<T, const N: usize> ops::IndexMut<usize> for ComboVec<T, N> {
     #[inline]
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         if idx < N {
@@ -880,7 +880,7 @@ impl<T, const N: usize> ops::IndexMut<usize> for ReArr<T, N> {
     }
 }
 
-impl<T, const N: usize> IntoIterator for ReArr<T, N> {
+impl<T, const N: usize> IntoIterator for ComboVec<T, N> {
     type Item = T;
     type IntoIter = Chain<Flatten<ArrayIter<Option<T>, N>>, VecIter<T>>;
 
@@ -890,7 +890,7 @@ impl<T, const N: usize> IntoIterator for ReArr<T, N> {
     }
 }
 
-impl<T> FromIterator<T> for ReArr<T, 0> {
+impl<T> FromIterator<T> for ComboVec<T, 0> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self {
@@ -901,10 +901,10 @@ impl<T> FromIterator<T> for ReArr<T, 0> {
     }
 }
 
-impl<T: Debug, const N: usize> Debug for ReArr<T, N> {
+impl<T: Debug, const N: usize> Debug for ComboVec<T, N> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.debug_struct("ReArr")
+        f.debug_struct("ComboVec")
             .field("arr", &self.arr)
             .field("arr_len", &self.arr_len)
             .field("vec", &self.vec)
@@ -912,7 +912,7 @@ impl<T: Debug, const N: usize> Debug for ReArr<T, N> {
     }
 }
 
-impl<T: Debug, const N: usize> Display for ReArr<T, N> {
+impl<T: Debug, const N: usize> Display for ComboVec<T, N> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         f.debug_list().entries(self.arr.iter().flatten()).entries(&self.vec).finish()

@@ -1,10 +1,10 @@
-use combo_vec::{rearr, ReArr};
+use combo_vec::{combo_vec, ComboVec};
 
-const DEFAULT_TEST_REARR: ReArr<i32, 3> = rearr![1, 2, 3];
-const EMPTY_STRING_ALLOC: ReArr<String, 3> = rearr![];
+const DEFAULT_TEST_REARR: ComboVec<i32, 3> = combo_vec![1, 2, 3];
+const EMPTY_STRING_ALLOC: ComboVec<String, 3> = combo_vec![];
 
 #[test]
-fn copy_string_rearr() {
+fn copy_string_combo_vec() {
     let mut x = EMPTY_STRING_ALLOC;
     x.push(String::from("hello"));
     x.push(String::from("world"));
@@ -103,20 +103,20 @@ fn truncate_invalids() {
 
 #[test]
 fn exarr_macro() {
-    let item1 = rearr![1, 2, 3];
+    let item1 = combo_vec![1, 2, 3];
     println!("{item1}");
     assert_eq!(item1.len(), 3);
 
-    let item2 = rearr![5; 3];
+    let item2 = combo_vec![5; 3];
     println!("{item2}");
     assert_eq!(item2.len(), 3);
 
-    let item3 = rearr![i32];
+    let item3 = combo_vec![i32];
     println!("{item3}");
     assert_eq!(item3.len(), 0);
     assert_eq!(item3.stack_capacity(), 16);
 
-    let item4 = rearr![i32; 5];
+    let item4 = combo_vec![i32; 5];
     println!("{item4}");
     assert_eq!(item4.len(), 0);
     assert_eq!(item4.stack_capacity(), 5);
