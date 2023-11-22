@@ -153,6 +153,70 @@ fn arrayvec_push_big(c: &mut Criterion) {
     });
 }
 
+fn vec_pop_big(c: &mut Criterion) {
+    c.bench_function("vec_pop_big", |b| {
+        b.iter(|| {
+            const VEC: ComboVec<i32, 2048> = combo_vec![];
+            let mut my_vec = VEC;
+            for i in 0..2048 {
+                black_box(&mut my_vec).push(black_box(i));
+            }
+
+            for _ in 0..2048 {
+                black_box(&mut my_vec).pop();
+            }
+        })
+    });
+}
+
+fn arr_pop_big(c: &mut Criterion) {
+    c.bench_function("arr_pop_big", |b| {
+        b.iter(|| {
+            const ARR: ReArr<i32, 2048> = re_arr![];
+            let mut my_arr = ARR;
+            for i in 0..2048 {
+                black_box(&mut my_arr).push(black_box(i));
+            }
+
+            for _ in 0..2048 {
+                black_box(&mut my_arr).pop();
+            }
+        })
+    });
+}
+
+fn smallvec_pop_big(c: &mut Criterion) {
+    c.bench_function("smallvec_pop_big", |b| {
+        b.iter(|| {
+            const SMALL_VEC: SmallVec<[i32; 2048]> = SmallVec::new_const();
+            let mut my_vec = SMALL_VEC;
+            for i in 0..2048 {
+                black_box(&mut my_vec).push(black_box(i));
+            }
+
+            for _ in 0..2048 {
+                black_box(&mut my_vec).pop();
+            }
+        })
+    });
+}
+
+fn arrayvec_pop_big(c: &mut Criterion) {
+    c.bench_function("arrayvec_pop_big", |b| {
+        b.iter(|| {
+            const ARRAYVEC: ArrayVec<i32, 2048> = ArrayVec::new_const();
+            let mut my_arr = ARRAYVEC;
+            for i in 0..2048 {
+                black_box(&mut my_arr).push(black_box(i));
+            }
+
+            for _ in 0..2048 {
+                black_box(&mut my_arr).pop();
+            }
+        })
+    });
+}
+
 criterion_group!(gets, get, get_panic);
 criterion_group!(news, new, new_from_arr);
 criterion_group!(
@@ -168,4 +232,5 @@ criterion_group!(
 );
 criterion_group!(smallvec, smallvec_push, smallvec_clone_const_push, smallvec_push_big);
 criterion_group!(arrayvec, arrayvec_push_big);
-criterion_main!(arrayvec, smallvec, gets, news, pushes);
+criterion_group!(pop, arr_pop_big, vec_pop_big, arrayvec_pop_big, smallvec_pop_big);
+criterion_main!(pop, arrayvec, smallvec, gets, news, pushes);

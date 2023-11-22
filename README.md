@@ -4,15 +4,19 @@
 
 [![forthebadge](https://forthebadge.com/images/badges/made-with-rust.svg)](https://forthebadge.com)
 
-"combo_vec" is a library for creating a "combo stack array-heap vector", or simply a resizable array with a vector for extra allocations.
+`ComboVec` is for creating a "combo stack array-heap vector", or simply a resizable array with a vector for extra allocations.
 
-Not only that, but this library has `ReArr` if you just want the resizable array part (which can be faster than even SmallVec.)
+Not only that, but this library has `ReArr` if you just want the resizable array part!
 
 Create a new `ComboVec` with the `combo_vec!` macro and a new `ReArr` with the `re_arr!` macro.
 
 This works by allocating an array of `T` on the stack, and then using a Vec on the heap for overflow.
 
 The stack-allocated array is always used to store the first `N` elements, even when the array is resized.
+
+_No_ `Default`, `Copy`, or `Clone` traits are required for `T` at all;
+but if T does implement any of them, then `ComboVec` and `ReArr` will also implement them.
+This also applied to `PartialEq`, `PartialOrd`, `Eq`, `Ord`, `Hash`, `Debug`, and `Display`.
 
 ## Why use ComboVec
 
@@ -25,6 +29,26 @@ In a test of pushing 2048 (pre-allocated) elements, almost a 54% performance inc
 - `ComboVec`: 4.54 µs
 - `SmallVec`: 9.33 µs
 
+The `combo_vec!` macro is very nice and convenient to use even in const contexts.
+
+```rust
+use combo_vec::{combo_vec, ComboVec};
+
+const SOME_ITEMS: ComboVec<i8, 3> = combo_vec![1, 2, 3];
+const MANY_ITEMS: ComboVec<u16, 90> = combo_vec![5; 90];
+const EXTRA_ITEMS: ComboVec<&str, 5> = combo_vec!["Hello", "world", "!"; None, None];
+
+// Infer the type and size of the ComboVec
+const NO_STACK_F32: ComboVec<f32, 0> = combo_vec![];
+
+// No const-initialization is needed to create a ComboVec with allocated elements on the stack
+use std::collections::HashMap;
+const EMPTY_HASHMAP_ALLOC: ComboVec<HashMap<&str, i32>, 3> = combo_vec![];
+
+// Creating a new ComboVec at compile time and doing this does have performance benefits
+let my_combo_vec = EMPTY_HASHMAP_ALLOC;
+```
+
 `ComboVec` also implements many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
 ## Why use ReArr
@@ -33,6 +57,26 @@ In a test of pushing 2048 (pre-allocated) elements, it ties for performance with
 
 - `ReArr`: 4.07 µs
 - `ArrayVec`: 4.00 µs
+
+The `re_arr!` macro is very nice and convenient to use even in const contexts.
+
+```rust
+use combo_vec::{re_arr, ReArr};
+
+const SOME_ITEMS: ReArr<i8, 3> = re_arr![1, 2, 3];
+const MANY_ITEMS: ReArr<u16, 90> = re_arr![5; 90];
+const EXTRA_ITEMS: ReArr<&str, 5> = re_arr!["Hello", "world", "!"; None, None];
+
+// Infer the type and size of the ReArr
+const NO_STACK_F32: ReArr<f32, 0> = re_arr![];
+
+// No const-initialization is needed to create a ComboVec with allocated elements on the stack
+use std::collections::HashMap;
+const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = re_arr![];
+
+// Creating a new ReArr at compile time and doing this does have performance benefits
+let my_re_arr = EMPTY_HASHMAP_ALLOC;
+```
 
 `ReArr` also implements many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
@@ -59,44 +103,39 @@ You can allocate memory on the stack for later use without settings values to th
 No Copy or Default traits required.
 
 ```rust
-use combo_vec::combo_vec;
+use combo_vec::{combo_vec, re_arr};
 
-// Easily allocate a new ComboVec where 16 elements can be stored on the stack.
-let default_f32_vec = combo_vec![f32];
+// Easily allocate where 16 elements can be stored on the stack.
+let default_combo_vec = combo_vec![f32];
+let default_re_arr = re_arr![f32];
 
-// Allocate a new, empty ComboVec with space to store 17 elements on the stack.
-let empty_f32_vec = combo_vec![f32; 17];
+// Allocate a new space to store 17 elements on the stack.
+let empty_combo_vec = combo_vec![f32; 17];
+let empty_re_arr = re_arr![f32; 17];
 ```
 
 ### Allocating memory on the stack in const contexts
 
-The main benefit of using the `combo_vec!` macro is that everything it does can be used in const contexts.
+The main benefit of using the `combo_vec!`/`re_arr!` macros is that everything it does can be used in const contexts.
 
 This allows you to allocate a ComboVec at the start of your program in a Mutex or RwLock, and have minimal runtime overhead.
 
 ```rust
-use combo_vec::{combo_vec, ComboVec};
+use combo_vec::{combo_vec, ComboVec, re_arr, ReArr};
 
-const SOME_ITEMS: ComboVec<i8, 3> = combo_vec![1, 2, 3];
-const MANY_ITEMS: ComboVec<u16, 90> = combo_vec![5; 90];
-
-// Infer the type and size of the ComboVec
-const NO_STACK_F32: ComboVec<f32, 13> = combo_vec![];
-
-// No const default implementation is needed to create a ComboVec with allocated elements on the stack
-use std::collections::HashMap;
-const EMPTY_HASHMAP_ALLOC: ComboVec<HashMap<&str, i32>, 3> = combo_vec![];
-
-/// Create a global-state RwLock that can store a ComboVec
+/// Create a global variable for the various program states for a semi-unspecified length
 use std::sync::RwLock;
-static PROGRAM_STATE: RwLock<ComboVec<&str, 20>> = RwLock::new(combo_vec![]);
+static PROGRAM_STATES: RwLock<ComboVec<HashMap<String, i32>, 20>> = RwLock::new(combo_vec![]);
+
+// If we know the stack will never be larger than 20 elements,
+// we can get a performance boost by using ReArr instead of ComboVec
+let mut runtime_stack = re_arr![i32; 20];
 ```
 
 ### Go fast with const & copy
 
-Making an entire, new `ComboVec` at runtime can be slower than just allocating a new array or a new vector - because it needs to do both.
-
-We can take advantage of `ComboVec` being a `Copy` type, and use it to create a new `ComboVec` in a const context then copy it to our runtime variable. This is much faster than creating a new `ComboVec` at runtime. `T` does _not_ need to be `Copy`.
+We can take advantage of `ComboVec` and `ReArr` by creating one const context then copying it to our runtime variable.
+This is much faster than creating a new `ComboVec` at runtime, and `T` does _not_ need to be `Copy`.
 
 Here's a basic look at what this looks like:
 
@@ -105,10 +144,10 @@ use combo_vec::{combo_vec, ComboVec};
 
 const SOME_ITEMS: ComboVec<String, 2> = combo_vec![];
 
-for _ in 0..5 {
+for _ in 0..50 {
     let mut empty_combo_vec = SOME_ITEMS;
     empty_combo_vec.push("Hello".to_string());
-    empty_combo_vec.push("World".to_string());
+    empty_combo_vec.push("world".to_string());
     println!("{}!", empty_combo_vec.join(" "));
 }
 ```

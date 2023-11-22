@@ -30,7 +30,8 @@ use core::{
 /// use std::collections::HashMap;
 /// const EMPTY_HASHMAP_ALLOC: ComboVec<HashMap<&str, i32>, 3> = combo_vec![];
 ///
-/// let my_combo_vec = combo_vec![1, 2, 3];
+/// // Creating a new ComboVec at compile time and doing this does have performance benefits
+/// let my_combo_vec = EMPTY_HASHMAP_ALLOC;
 /// ```
 #[macro_export]
 macro_rules! combo_vec {

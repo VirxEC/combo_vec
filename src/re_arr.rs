@@ -24,14 +24,15 @@ use core::{
 /// const MANY_ITEMS: ReArr<u16, 90> = re_arr![5; 90];
 /// const EXTRA_ITEMS: ReArr<&str, 5> = re_arr!["Hello", "world", "!"; None, None];
 ///
-/// // Infer the type and size of the ComboVec
+/// // Infer the type and size of the ReArr
 /// const NO_STACK_F32: ReArr<f32, 0> = re_arr![];
 ///
 /// // No const-initialization is needed to create a ComboVec with allocated elements on the stack
 /// use std::collections::HashMap;
 /// const EMPTY_HASHMAP_ALLOC: ReArr<HashMap<&str, i32>, 3> = re_arr![];
 ///
-/// let my_re_arr = re_arr![1, 2, 3];
+/// // Creating a new ReArr at compile time and doing this does have performance benefits
+/// let my_re_arr = EMPTY_HASHMAP_ALLOC;
 /// ```
 #[macro_export]
 macro_rules! re_arr {
@@ -223,11 +224,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// Remove the last element from the array and return it, or None if it is empty.
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        if self.arr_len > 0 {
+        if self.is_empty() {
+            None
+        } else {
             self.arr_len -= 1;
             self.arr[self.arr_len].take()
-        } else {
-            None
         }
     }
 
@@ -296,20 +297,20 @@ impl<T, const N: usize> ReArr<T, N> {
     /// Get the last element, returning `None` if there are no elements.
     #[inline]
     pub const fn last(&self) -> Option<&T> {
-        if N == 0 {
+        if self.is_empty() {
             None
         } else {
-            self.arr[N - 1].as_ref()
+            self.arr[self.len() - 1].as_ref()
         }
     }
 
     /// Get the last element as a mutable reference, returning `None` if there are no elements.
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        if N == 0 {
+        if self.is_empty() {
             None
         } else {
-            self.arr[N - 1].as_mut()
+            self.arr[self.len() - 1].as_mut()
         }
     }
 
