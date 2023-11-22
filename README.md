@@ -2,8 +2,6 @@
 
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 
-[![forthebadge](https://forthebadge.com/images/badges/made-with-rust.svg)](https://forthebadge.com)
-
 `ComboVec` is for creating a "combo stack array-heap vector", or simply a resizable array with a vector for extra allocations.
 
 Not only that, but this library has `ReArr` if you just want the resizable array part!
