@@ -1,3 +1,5 @@
+#![cfg(feature = "alloc")]
+
 use combo_vec::{combo_vec, ComboVec};
 
 const DEFAULT_TEST_REARR: ComboVec<i32, 3> = combo_vec![1, 2, 3];

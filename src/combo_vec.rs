@@ -190,12 +190,11 @@ impl<T, const N: usize> ComboVec<T, N> {
         self.vec.reserve(additional);
     }
 
-    /// Create a resizable array from a fixed size array.
+    /// Create a [`ComboVec`] from a fixed size array.
     ///
-    /// Use Some is used for initialized values, and None is used for uninitialized values.
+    /// Only Some are allowed, no unitialized None values.
     ///
-    /// This is used by the [`combo_vec!`] macro, and you should consider using it instead.
-    /// Note that the macro can't create mixed initialized and uninitialized arrays, only one or the other.
+    /// This is used by the [`combo_vec!`] macro.
     ///
     /// ```rust
     /// use combo_vec::{combo_vec, ComboVec};
@@ -210,6 +209,29 @@ impl<T, const N: usize> ComboVec<T, N> {
         Self {
             arr,
             arr_len: N,
+            vec: Vec::new(),
+        }
+    }
+
+    /// Create a [`ComboVec`] from a fixed size array.
+    ///
+    /// All slots must be populated with `Some` values until
+    /// the first `None` value is encountered, or the end of the array is reached.
+    /// After that, all remaining slots must be `None`.
+    ///
+    /// ```rust
+    /// use combo_vec::{combo_vec, ComboVec};
+    ///
+    /// let my_combo_vec = ComboVec::from_arr_and_len([Some(1), Some(2), Some(3), None, None], 3);
+    /// assert_eq!(my_combo_vec.len(), 3);
+    /// assert_eq!(my_combo_vec.stack_capacity(), 5);
+    /// ```
+    #[must_use]
+    #[inline]
+    pub const fn from_arr_and_len(arr: [Option<T>; N], arr_len: usize) -> Self {
+        Self {
+            arr,
+            arr_len,
             vec: Vec::new(),
         }
     }
@@ -629,8 +651,6 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Get this [`ComboVec`] transformed into a [`Vec`].
     ///
-    /// [`Vec`]: std::vec::Vec
-    ///
     /// # Examples
     ///
     /// ```rust
@@ -662,8 +682,6 @@ impl<T, const N: usize> ComboVec<T, N> {
 
 impl<T: Clone, const N: usize> ComboVec<T, N> {
     /// Get this [`ComboVec`] represented as a [`Vec`].
-    ///
-    /// [`Vec`]: std::vec::Vec
     ///
     /// # Examples
     ///
@@ -799,9 +817,9 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
         }
     }
 
-    /// Removes an element from the vector and returns it.
+    /// Removes an element from the `ComboVec` and returns it.
     ///
-    /// The removed element is replaced by the last element of the vector.
+    /// The removed element is replaced by the last element of the `ComboVec`.
     ///
     /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
     ///
@@ -845,14 +863,16 @@ impl<T: ToString, const N: usize> ComboVec<T, N> {
     /// assert_eq!(x.join(", "), "1, 2, 3");
     /// ```
     pub fn join(&self, sep: &str) -> String {
-        self.iter().enumerate().fold(String::new(), |mut s, (i, item)| {
-            if i != 0 {
-                s.push_str(sep);
-            }
+        self.iter()
+            .enumerate()
+            .fold(String::with_capacity(self.len()), |mut s, (i, item)| {
+                if i != 0 {
+                    s.push_str(sep);
+                }
 
-            s.push_str(&item.to_string());
-            s
-        })
+                s.push_str(&item.to_string());
+                s
+            })
     }
 }
 
