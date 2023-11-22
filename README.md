@@ -88,9 +88,9 @@ use combo_vec::combo_vec;
 let mut combo_vec = combo_vec![1, 2, 3];
 // Allocate an extra element on the heap
 combo_vec.push(4);
-// Truncate to only the first element
+// Truncate to a length of 2
 combo_vec.truncate(2);
-// Fill the last elements on the stack, then allocate the next item on the heap
+// Fill the last element on the stack, then allocate the next items on the heap
 combo_vec.extend([3, 4, 5]);
 ```
 
@@ -121,8 +121,8 @@ This allows you to allocate a ComboVec at the start of your program in a Mutex o
 ```rust
 use combo_vec::{combo_vec, ComboVec, re_arr, ReArr};
 
-/// Create a global variable for the various program states for a semi-unspecified length
-use std::sync::RwLock;
+// Create a global variable for the various program states for a semi-unspecified length
+use std::{collections::HashMap, sync::RwLock};
 static PROGRAM_STATES: RwLock<ComboVec<HashMap<String, i32>, 20>> = RwLock::new(combo_vec![]);
 
 // If we know the stack will never be larger than 20 elements,

@@ -666,7 +666,7 @@ impl<T, const N: usize> ComboVec<T, N> {
         self.into_iter().collect()
     }
 
-    /// Get this [`ComboVec`] represented as a [`Vec`], borrowing data instead of cloning it.
+    /// Get this [`ComboVec`] represented as a [`Vec`], borrowing data instead of moving it.
     ///
     /// ## Examples
     ///

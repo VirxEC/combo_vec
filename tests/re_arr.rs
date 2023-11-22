@@ -1,12 +1,11 @@
-#![cfg(feature = "alloc")]
+use combo_vec::{re_arr, ReArr};
 
-use combo_vec::{combo_vec, ComboVec};
-
-const DEFAULT_TEST_REARR: ComboVec<i32, 3> = combo_vec![1, 2, 3];
-const EMPTY_STRING_ALLOC: ComboVec<String, 3> = combo_vec![];
+const DEFAULT_TEST_REARR: ReArr<i32, 5> = re_arr![1, 2, 3; None, None];
+const EMPTY_STRING_ALLOC: ReArr<String, 3> = re_arr![];
 
 #[test]
-fn copy_string_combo_vec() {
+#[cfg(feature = "alloc")]
+fn copy_string_re_arr() {
     let mut x = EMPTY_STRING_ALLOC;
     x.push(String::from("hello"));
     x.push(String::from("world"));
@@ -43,52 +42,35 @@ fn lengths() {
     let mut cv = DEFAULT_TEST_REARR;
     cv.push(4);
     assert_eq!(cv.len(), 4);
-    assert_eq!(cv.stack_len(), 3);
-    assert_eq!(cv.heap_len(), 1);
+    assert_eq!(cv.capacity(), 5);
 }
 
 #[test]
 fn extend() {
     let mut cv = DEFAULT_TEST_REARR;
-    cv.extend(vec![4, 5, 6]);
-    cv.extend(DEFAULT_TEST_REARR);
-    dbg!(&cv);
-    assert_eq!(cv.len(), 9);
-    assert_eq!(cv.stack_len(), 3);
-    assert_eq!(cv.heap_len(), 6);
-    assert_eq!(cv.to_vec(), vec![1, 2, 3, 4, 5, 6, 1, 2, 3]);
+    cv.extend(vec![4]);
+    assert_eq!(cv.len(), 4);
+    #[cfg(feature = "alloc")]
+    assert_eq!(cv.to_vec(), vec![1, 2, 3, 4]);
 }
 
 #[test]
-fn truncate_into_stack_push() {
+fn truncate_push() {
     let mut cv = DEFAULT_TEST_REARR;
     cv.truncate(2);
     cv.push(3);
     assert_eq!(cv.len(), 3);
-    assert_eq!(cv.stack_len(), 3);
-    assert_eq!(cv.heap_len(), 0);
+    #[cfg(feature = "alloc")]
     assert_eq!(cv.to_vec(), vec![1, 2, 3]);
 }
 
 #[test]
-fn truncate_into_stack() {
+fn truncate() {
     let mut cv = DEFAULT_TEST_REARR;
     cv.truncate(2);
     assert_eq!(cv.len(), 2);
-    assert_eq!(cv.stack_len(), 2);
-    assert_eq!(cv.heap_len(), 0);
+    #[cfg(feature = "alloc")]
     assert_eq!(cv.to_vec(), vec![1, 2]);
-}
-
-#[test]
-fn truncate_into_heap() {
-    let mut cv = DEFAULT_TEST_REARR;
-    cv.extend(vec![4, 5, 6]);
-    cv.truncate(4);
-    assert_eq!(cv.len(), 4);
-    assert_eq!(cv.stack_len(), 3);
-    assert_eq!(cv.heap_len(), 1);
-    assert_eq!(cv.to_vec(), vec![1, 2, 3, 4]);
 }
 
 #[test]
@@ -97,28 +79,27 @@ fn truncate_invalids() {
     cv.truncate(4);
     cv.truncate(3);
     assert_eq!(cv.len(), 3);
-    assert_eq!(cv.stack_len(), 3);
-    assert_eq!(cv.heap_len(), 0);
+    #[cfg(feature = "alloc")]
     assert_eq!(cv.to_vec(), vec![1, 2, 3]);
 }
 
 #[test]
 fn exarr_macro() {
-    let item1 = combo_vec![1, 2, 3];
+    let item1 = re_arr![1, 2, 3];
     println!("{item1}");
     assert_eq!(item1.len(), 3);
 
-    let item2 = combo_vec![5; 3];
+    let item2 = re_arr![5; 3];
     println!("{item2}");
     assert_eq!(item2.len(), 3);
 
-    let item3 = combo_vec![i32];
+    let item3 = re_arr![i32];
     println!("{item3}");
     assert_eq!(item3.len(), 0);
-    assert_eq!(item3.stack_capacity(), 16);
+    assert_eq!(item3.capacity(), 16);
 
-    let item4 = combo_vec![i32; 5];
+    let item4 = re_arr![i32; 5];
     println!("{item4}");
     assert_eq!(item4.len(), 0);
-    assert_eq!(item4.stack_capacity(), 5);
+    assert_eq!(item4.capacity(), 5);
 }
