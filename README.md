@@ -2,6 +2,8 @@
 
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/) 
 
+[![forthebadge](https://forthebadge.com/images/badges/made-with-rust.svg)](https://forthebadge.com)
+
 "combo_vec" is a library for creating a "combo stack array-heap vector", or simply a resizable array.
 
 Create a new `ReArr` with the `rearr!` macro.
