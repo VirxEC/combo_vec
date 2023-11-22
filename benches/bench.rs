@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use combo_vec::{combo_vec, re_arr, ComboVec, ReArr};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use smallvec::SmallVec;
@@ -53,9 +54,10 @@ fn push_clone_const(c: &mut Criterion) {
 fn push_big_combo(c: &mut Criterion) {
     c.bench_function("push_big_combo", |b| {
         b.iter(|| {
-            let mut my_arr = black_box(combo_vec![i32; 2048]);
+            const VEC: ComboVec<i32, 2048> = combo_vec![];
+            let mut my_arr = VEC;
             for i in 0..2048 {
-                my_arr.push(i);
+                black_box(&mut my_arr).push(black_box(i));
             }
         })
     });
@@ -64,9 +66,10 @@ fn push_big_combo(c: &mut Criterion) {
 fn push_big_arr(c: &mut Criterion) {
     c.bench_function("push_big_arr", |b| {
         b.iter(|| {
-            let mut my_arr = black_box(re_arr![i32; 2048]);
+            const ARR: ReArr<i32, 2048> = re_arr![];
+            let mut my_arr = ARR;
             for i in 0..2048 {
-                my_arr.push(i);
+                black_box(&mut my_arr).push(black_box(i));
             }
         })
     });
@@ -120,9 +123,10 @@ fn smallvec_push(c: &mut Criterion) {
 fn smallvec_push_big(c: &mut Criterion) {
     c.bench_function("smallvec_push_big", |b| {
         b.iter(|| {
-            let mut my_arr = black_box(SmallVec::<[i32; 2048]>::new());
+            const SMALL_VEC: SmallVec<[i32; 2048]> = SmallVec::new_const();
+            let mut my_arr = SMALL_VEC;
             for i in 0..2048 {
-                my_arr.push(i);
+                black_box(&mut my_arr).push(black_box(i));
             }
         })
     });
@@ -133,6 +137,18 @@ fn smallvec_clone_const_push(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(SMALL_VEC);
             my_arr.push(4);
+        })
+    });
+}
+
+fn arrayvec_push_big(c: &mut Criterion) {
+    c.bench_function("arrayvec_push_big", |b| {
+        b.iter(|| {
+            const ARRAYVEC: ArrayVec<i32, 2048> = ArrayVec::new_const();
+            let mut my_arr = ARRAYVEC;
+            for i in 0..2048 {
+                black_box(&mut my_arr).push(black_box(i));
+            }
         })
     });
 }
@@ -151,4 +167,5 @@ criterion_group!(
     push_clone_const_no_vec,
 );
 criterion_group!(smallvec, smallvec_push, smallvec_clone_const_push, smallvec_push_big);
-criterion_main!(smallvec, gets, news, pushes);
+criterion_group!(arrayvec, arrayvec_push_big);
+criterion_main!(arrayvec, smallvec, gets, news, pushes);

@@ -18,21 +18,21 @@ The stack-allocated array is always used to store the first `N` elements, even w
 
 This is mostly used for when you know the maximum number of elements that will be stored 99% if the time, but don't want to cause errors in the last 1% and also won't want to give up on the performance of using the stack instead of the heap most of the time.
 
-In a test of pushing 2048 (pre-allocated) elements, almost a 10% performance increase is shown:
+I've gotten performance bumps with `ComboVec` over the similar type SmallVec (both with and without it's `union` feature.)
 
-- `ReArr`: 7.32 µs
-- `SmallVec`: 8.15 µs
+In a test of pushing 2048 (pre-allocated) elements, almost a 54% performance increase is shown:
+
+- `ComboVec`: 4.54 µs
+- `SmallVec`: 9.33 µs
 
 `ComboVec` also implements many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
 ## Why use ReArr
 
-I've gotten performance bumps with `ReArr` over the similar type SmallVec (both with and without it's `union` feature.)
+In a test of pushing 2048 (pre-allocated) elements, it ties for performance with `ArrayVec`:
 
-In a test of pushing 2048 (pre-allocated) elements, almost a 38% performance increase is shown:
-
-- `ReArr`: 5.00 µs
-- `SmallVec`: 8.15 µs
+- `ReArr`: 4.07 µs
+- `ArrayVec`: 4.00 µs
 
 `ReArr` also implements many methods that are exclusive to `Vec` such as `extend`, `truncate`, `push`, `join` etc.
 
