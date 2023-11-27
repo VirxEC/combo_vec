@@ -18,7 +18,7 @@ fn new_from_arr(c: &mut Criterion) {
 fn push(c: &mut Criterion) {
     c.bench_function("push", |b| {
         b.iter(|| {
-            let mut my_arr = black_box(combo_vec![i32; 8]);
+            let mut my_arr = black_box(ComboVec::<i32, 8>::new());
             my_arr.push(4);
         })
     });
@@ -27,7 +27,7 @@ fn push(c: &mut Criterion) {
 fn push_no_vec(c: &mut Criterion) {
     c.bench_function("push_no_vec", |b| {
         b.iter(|| {
-            let mut my_arr = black_box(re_arr![i32; 8]);
+            let mut my_arr = black_box(ReArr::<i32, 8>::new());
             my_arr.push(4);
         })
     });

@@ -103,13 +103,9 @@ No Copy or Default traits required.
 ```rust
 use combo_vec::{combo_vec, re_arr};
 
-// Easily allocate where 16 elements can be stored on the stack.
-let default_combo_vec = combo_vec![f32];
-let default_re_arr = re_arr![f32];
-
 // Allocate a new space to store 17 elements on the stack.
-let empty_combo_vec = combo_vec![f32; 17];
-let empty_re_arr = re_arr![f32; 17];
+let empty_combo_vec = ComboVec::<f32, 17>::new();
+let empty_re_arr = ReArr::<f32, 17>::new();
 ```
 
 ### Allocating memory on the stack in const contexts
@@ -127,7 +123,7 @@ static PROGRAM_STATES: RwLock<ComboVec<HashMap<String, i32>, 20>> = RwLock::new(
 
 // If we know the stack will never be larger than 20 elements,
 // we can get a performance boost by using ReArr instead of ComboVec
-let mut runtime_stack = re_arr![i32; 20];
+let mut runtime_stack = ReArr::<i32, 20>::new();
 ```
 
 ### Go fast with const & copy

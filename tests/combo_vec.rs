@@ -111,14 +111,4 @@ fn exarr_macro() {
     let item2 = combo_vec![5; 3];
     println!("{item2}");
     assert_eq!(item2.len(), 3);
-
-    let item3 = combo_vec![i32];
-    println!("{item3}");
-    assert_eq!(item3.len(), 0);
-    assert_eq!(item3.stack_capacity(), 16);
-
-    let item4 = combo_vec![i32; 5];
-    println!("{item4}");
-    assert_eq!(item4.len(), 0);
-    assert_eq!(item4.stack_capacity(), 5);
 }

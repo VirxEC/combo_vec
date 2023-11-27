@@ -39,19 +39,13 @@ macro_rules! re_arr {
     () => (
         $crate::ReArr::new()
     );
-    ($type:ty) => (
-        $crate::ReArr::<$type, 16>::new()
-    );
-    ($type:ty; $n:literal) => (
-        $crate::ReArr::<$type, $n>::new()
-    );
     ($elem:expr; $n:expr) => (
         $crate::ReArr::from_arr([Some($elem); $n])
     );
     ($($x:expr),+ $(,)?) => (
         $crate::ReArr::from_arr([$(Some($x)),+])
     );
-    ($($x:expr),+; $($rest:expr),*) => (
+    ($($x:expr),+; $($rest:expr),* $(,)?) => (
         $crate::ReArr::from_arr_and_len(&[$(Some($x)),+, $($rest),*])
     );
 }
@@ -190,9 +184,9 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```rust
     /// use combo_vec::{re_arr, ReArr};
     ///
+    /// const RE_ARR: ReArr::<i32, 3> = re_arr![];
     /// let my_re_arr = ReArr::<i32, 3>::new();
-    /// let convenient_re_arr = re_arr![i32; 3];
-    /// assert_eq!(my_re_arr, convenient_re_arr);
+    /// assert_eq!(my_re_arr, RE_ARR);
     /// ```
     #[must_use]
     #[inline]
@@ -494,7 +488,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// let my_re_arr = re_arr![1, 2, 3; None];
     /// assert_eq!(my_re_arr.is_empty(), false);
     ///
-    /// let empty_re_arr = re_arr![i32; 3];
+    /// let empty_re_arr = ReArr::<i32, 3>::new();
     /// assert_eq!(empty_re_arr.is_empty(), true);
     /// ```
     #[inline]

@@ -38,19 +38,13 @@ macro_rules! combo_vec {
     () => (
         $crate::ComboVec::new()
     );
-    ($type:ty) => (
-        $crate::ComboVec::<$type, 16>::new()
-    );
-    ($type:ty; $n:literal) => (
-        $crate::ComboVec::<$type, $n>::new()
-    );
     ($elem:expr; $n:expr) => (
         $crate::ComboVec::from_arr([Some($elem); $n])
     );
     ($($x:expr),+ $(,)?) => (
         $crate::ComboVec::from_arr([$(Some($x)),+])
     );
-    ($($x:expr),+; $($rest:expr),*) => (
+    ($($x:expr),+; $($rest:expr),* $(,)?) => (
         $crate::ComboVec::from_arr_and_len(&[$(Some($x)),+, $($rest),*])
     );
 }
@@ -178,9 +172,9 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ```rust
     /// use combo_vec::{combo_vec, ComboVec};
     ///
+    /// const COMBO_VEC: ComboVec::<i32, 3> = combo_vec![];
     /// let my_combo_vec = ComboVec::<i32, 3>::new();
-    /// let convient_combo_vec = combo_vec![i32; 3];
-    /// assert_eq!(my_combo_vec, convient_combo_vec);
+    /// assert_eq!(my_combo_vec, COMBO_VEC);
     /// ```
     #[inline]
     #[must_use]
@@ -419,9 +413,9 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::combo_vec;
+    /// use combo_vec::ComboVec;
     ///
-    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// let mut my_combo_vec = ComboVec::<i32, 3>::new();
     /// assert_eq!(my_combo_vec.len(), 0);
     /// assert_eq!(my_combo_vec.stack_capacity(), 3);
     /// ```
@@ -435,9 +429,9 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::combo_vec;
+    /// use combo_vec::ComboVec;
     ///
-    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// let mut my_combo_vec = ComboVec::<i32, 3>::new();
     /// assert_eq!(my_combo_vec.len(), 0);
     /// assert_eq!(my_combo_vec.heap_capacity(), 0);
     /// ```
@@ -451,9 +445,9 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::combo_vec;
+    /// use combo_vec::ComboVec;
     ///
-    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// let mut my_combo_vec = ComboVec::<i32, 3>::new();
     /// assert_eq!(my_combo_vec.len(), 0);
     /// assert_eq!(my_combo_vec.capacity(), 3);
     /// ```
@@ -587,9 +581,9 @@ impl<T, const N: usize> ComboVec<T, N> {
     /// ## Examples
     ///
     /// ```rust
-    /// use combo_vec::combo_vec;
+    /// use combo_vec::ComboVec;
     ///
-    /// let mut my_combo_vec = combo_vec![i32; 3];
+    /// let mut my_combo_vec = ComboVec::<i32, 3>::new();
     /// assert!(my_combo_vec.is_empty());
     /// ```
     #[inline]

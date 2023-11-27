@@ -92,14 +92,4 @@ fn exarr_macro() {
     let item2 = re_arr![5; 3];
     println!("{item2}");
     assert_eq!(item2.len(), 3);
-
-    let item3 = re_arr![i32];
-    println!("{item3}");
-    assert_eq!(item3.len(), 0);
-    assert_eq!(item3.capacity(), 16);
-
-    let item4 = re_arr![i32; 5];
-    println!("{item4}");
-    assert_eq!(item4.len(), 0);
-    assert_eq!(item4.capacity(), 5);
 }
