@@ -509,7 +509,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
-        self.arr[..self.arr_len].iter().filter_map(Option::as_ref)
+        self.arr.iter().flatten()
     }
 
     /// Get an iterator over the elements of the array, returning mutable references.
@@ -525,7 +525,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> + '_ {
-        self.arr[..self.arr_len].iter_mut().filter_map(Option::as_mut)
+        self.arr.iter_mut().flatten()
     }
 
     /// Extend this array with all the elements from the given iterator.
