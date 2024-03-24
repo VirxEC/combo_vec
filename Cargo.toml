@@ -1,6 +1,6 @@
 [package]
 name = "combo_vec"
-version = "0.7.1"
+version = "0.7.2"
 edition = "2021"
 authors = ["VirxEC"]
 description = "A blazingly fast no-std vector-like ADT using the stack (and optionally heap for overflow)"
@@ -13,10 +13,11 @@ rust-version = "1.74.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lints.rust]
-# unsafe_code = "forbid"
+unsafe_code = "forbid"
 
 [lints.clippy]
 all = "warn"
+pedantic = "warn"
 
 [features]
 default = ["alloc"]

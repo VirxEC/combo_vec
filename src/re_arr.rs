@@ -139,7 +139,7 @@ impl<T: Copy, const N: usize> ReArr<T, N> {
     /// After that, all remaining slots must be `None`.
     ///
     /// This function is forced to accept a reference to the array and then copy it
-    /// due to <https://github.com/rust-lang/rust/issues/80384>
+    /// due to <https://github.com/rust-lang/rust/issues/57349>
     ///
     /// This is used by the [`re_arr!`] macro.
     ///
@@ -650,7 +650,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// If `new_len` is greater than `len`, the [`ReArr`] is extended
     /// with the result of calling the closure `f`.
     ///
-    /// If `new_len` is less than `len`, the [`ReArr`] is truncated.vec()
+    /// If `new_len` is less than `len`, the [`ReArr`] is truncated.
     ///
     /// ## Panics
     ///

@@ -1,4 +1,4 @@
-#![warn(missing_docs, clippy::pedantic, clippy::nursery)]
+#![warn(missing_docs)]
 
 //! [`ComboVec`] is for creating a "combo stack array-heap vector", or simply a resizable array with a vector for extra allocations.
 //!

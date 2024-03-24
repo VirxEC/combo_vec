@@ -20,7 +20,7 @@ fn push(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(ComboVec::<i32, 8>::new());
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -29,7 +29,7 @@ fn push_no_vec(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(ReArr::<i32, 8>::new());
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -38,7 +38,7 @@ fn push_clone_const_no_vec(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(MY_ARR);
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -47,7 +47,7 @@ fn push_clone_const(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(MY_VEC);
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -59,7 +59,7 @@ fn push_big_combo(c: &mut Criterion) {
             for i in 0..2048 {
                 black_box(&mut my_arr).push(black_box(i));
             }
-        })
+        });
     });
 }
 
@@ -71,7 +71,7 @@ fn push_big_arr(c: &mut Criterion) {
             for i in 0..2048 {
                 black_box(&mut my_arr).push(black_box(i));
             }
-        })
+        });
     });
 }
 
@@ -80,7 +80,7 @@ fn normal_push(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(Vec::new());
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -89,7 +89,7 @@ fn normal_push_precap(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(Vec::with_capacity(1));
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -98,7 +98,7 @@ fn get(c: &mut Criterion) {
         b.iter(|| {
             let my_arr = combo_vec![1, 2, 3];
             black_box(my_arr.get(1));
-        })
+        });
     });
 }
 
@@ -107,7 +107,7 @@ fn get_panic(c: &mut Criterion) {
         b.iter(|| {
             let my_arr = combo_vec![1, 2, 3];
             black_box(my_arr[1]);
-        })
+        });
     });
 }
 
@@ -116,7 +116,7 @@ fn smallvec_push(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(SmallVec::<[i32; 8]>::new());
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -128,7 +128,7 @@ fn smallvec_push_big(c: &mut Criterion) {
             for i in 0..2048 {
                 black_box(&mut my_arr).push(black_box(i));
             }
-        })
+        });
     });
 }
 
@@ -137,7 +137,7 @@ fn smallvec_clone_const_push(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(SMALL_VEC);
             my_arr.push(4);
-        })
+        });
     });
 }
 
@@ -149,7 +149,7 @@ fn arrayvec_push_big(c: &mut Criterion) {
             for i in 0..2048 {
                 black_box(&mut my_arr).push(black_box(i));
             }
-        })
+        });
     });
 }
 
@@ -165,7 +165,7 @@ fn vec_pop_big(c: &mut Criterion) {
             for _ in 0..2048 {
                 black_box(&mut my_vec).pop();
             }
-        })
+        });
     });
 }
 
@@ -181,7 +181,7 @@ fn arr_pop_big(c: &mut Criterion) {
             for _ in 0..2048 {
                 black_box(&mut my_arr).pop();
             }
-        })
+        });
     });
 }
 
@@ -197,7 +197,7 @@ fn smallvec_pop_big(c: &mut Criterion) {
             for _ in 0..2048 {
                 black_box(&mut my_vec).pop();
             }
-        })
+        });
     });
 }
 
@@ -213,7 +213,7 @@ fn arrayvec_pop_big(c: &mut Criterion) {
             for _ in 0..2048 {
                 black_box(&mut my_arr).pop();
             }
-        })
+        });
     });
 }
 
