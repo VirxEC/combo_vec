@@ -80,6 +80,7 @@ fn normal_push(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(Vec::new());
             my_arr.push(4);
+            black_box(my_arr);
         });
     });
 }
@@ -89,6 +90,7 @@ fn normal_push_precap(c: &mut Criterion) {
         b.iter(|| {
             let mut my_arr = black_box(Vec::with_capacity(1));
             my_arr.push(4);
+            black_box(my_arr);
         });
     });
 }
