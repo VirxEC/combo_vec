@@ -260,7 +260,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_re_arr.pop(), None);
     /// ```
     #[inline]
-    pub fn pop(&mut self) -> Option<T> {
+    pub const fn pop(&mut self) -> Option<T> {
         if self.is_empty() {
             None
         } else {
@@ -430,7 +430,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_re_arr.first_mut(), Some(&mut 1));
     /// ```
     #[inline]
-    pub fn first_mut(&mut self) -> Option<&mut T> {
+    pub const fn first_mut(&mut self) -> Option<&mut T> {
         if N == 0 {
             None
         } else {
@@ -454,7 +454,7 @@ impl<T, const N: usize> ReArr<T, N> {
         if self.is_empty() {
             None
         } else {
-            self.arr[self.len() - 1].as_ref()
+            self.arr[self.arr_len - 1].as_ref()
         }
     }
 
@@ -470,11 +470,11 @@ impl<T, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_re_arr.last_mut(), Some(&mut 3));
     /// ```
     #[inline]
-    pub fn last_mut(&mut self) -> Option<&mut T> {
+    pub const fn last_mut(&mut self) -> Option<&mut T> {
         if self.is_empty() {
             None
         } else {
-            self.arr[self.len() - 1].as_mut()
+            self.arr[self.arr_len - 1].as_mut()
         }
     }
 
@@ -493,7 +493,7 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```
     #[inline]
     pub const fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.arr_len == 0
     }
 
     /// Get an iterator over the elements of the array.
@@ -635,9 +635,8 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     pub fn resize(&mut self, new_len: usize, val: T) {
         assert!(new_len <= N, "new length cannot be greater than the internal array length");
 
-        let len = self.len();
-        if new_len > len {
-            self.arr[len..new_len].fill(Some(val));
+        if new_len > self.arr_len {
+            self.arr[self.arr_len..new_len].fill(Some(val));
         } else {
             self.arr[new_len..].fill(None);
         }
@@ -674,9 +673,8 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     pub fn resize_with<F: FnMut() -> T>(&mut self, new_len: usize, mut f: F) {
         assert!(new_len <= N, "new length cannot be greater than the internal array length");
 
-        let len = self.len();
-        if new_len > len {
-            self.arr[len..new_len].fill(Some(f()));
+        if new_len > self.arr_len {
+            self.arr[self.arr_len..new_len].fill(Some(f()));
         } else {
             self.arr[new_len..].fill(None);
         }
@@ -736,7 +734,7 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_re_arr.to_vec(), vec![3, 2]);
     /// ```
     #[inline]
-    pub fn swap_remove(&mut self, index: usize) -> T {
+    pub const fn swap_remove(&mut self, index: usize) -> T {
         let last_value = self.pop().unwrap();
         self.arr[index].replace(last_value).unwrap()
     }
@@ -757,7 +755,7 @@ impl<T: ToString, const N: usize> ReArr<T, N> {
     pub fn join(&self, sep: &str) -> String {
         self.iter()
             .enumerate()
-            .fold(String::with_capacity(self.len()), |mut s, (i, item)| {
+            .fold(String::with_capacity(self.arr_len), |mut s, (i, item)| {
                 if i != 0 {
                     s.push_str(sep);
                 }
