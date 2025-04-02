@@ -101,7 +101,7 @@ You can allocate memory on the stack for later use without settings values to th
 No Copy or Default traits required.
 
 ```rust
-use combo_vec::{combo_vec, re_arr};
+use combo_vec::{ComboVec, ReArr};
 
 // Allocate a new space to store 17 elements on the stack.
 let empty_combo_vec = ComboVec::<f32, 17>::new();
