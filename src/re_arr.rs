@@ -221,6 +221,25 @@ impl<T, const N: usize> ReArr<T, N> {
         Self { arr, arr_len: N }
     }
 
+    // Create a new [`ReArr`] from an iterator reference, taking up to N items
+    // 
+    // Allows for initialization without consuming the iterator, leaving its
+    // remaining content for another procedure.
+    // 
+    // This is useful for ComboVec::from_iter, which needs to initialise both
+    // a ReArr and a Vec.
+    pub(crate) fn from_iter_ref(iter: &mut impl Iterator<Item = T>) -> Self {
+        let mut re_arr = Self::new();
+        for _ in 0..N {
+            if let Some(val) = iter.next() {
+                re_arr.push(val);
+                continue;
+            }
+            break;
+        }
+        re_arr
+    }
+
     /// Push an element to the end of the array.
     ///
     /// ## Panics
@@ -789,6 +808,13 @@ impl<T, const N: usize> IntoIterator for ReArr<T, N> {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.arr.into_iter().flatten()
+    }
+}
+
+impl<T, const N: usize> FromIterator<T> for ReArr<T, N> {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        ReArr::from_iter_ref(&mut iter.into_iter())
     }
 }
 

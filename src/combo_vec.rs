@@ -890,12 +890,13 @@ impl<T, const N: usize> IntoIterator for ComboVec<T, N> {
     }
 }
 
-impl<T> FromIterator<T> for ComboVec<T, 0> {
+impl<T, const N: usize> FromIterator<T> for ComboVec<T, N> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
         Self {
-            arr: ReArr::new(),
-            vec: iter.into_iter().collect(),
+            arr: ReArr::from_iter_ref(&mut iter),
+            vec: iter.collect(),
         }
     }
 }
