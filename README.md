@@ -14,7 +14,7 @@ The stack-allocated array is always used to store the first `N` elements, even w
 
 _No_ `Default`, `Copy`, or `Clone` traits are required for `T` at all;
 but if T does implement any of them, then `ComboVec` and `ReArr` will also implement them.
-This also applied to `PartialEq`, `PartialOrd`, `Eq`, `Ord`, `Hash`, `Debug`, and `Display`.
+This also applies to `PartialEq`, `PartialOrd`, `Eq`, `Ord`, `Hash`, `Debug`, and `Display`.
 
 ## Why use ComboVec
 

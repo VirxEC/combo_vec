@@ -45,7 +45,7 @@ macro_rules! combo_vec {
         $crate::ComboVec::from_arr([$(Some($x)),+])
     );
     ($($x:expr),+; $($rest:expr),* $(,)?) => (
-        $crate::ComboVec::from_arr_and_len(&[$(Some($x)),+, $($rest),*])
+        $crate::ComboVec::from_arr([$(Some($x)),+, $($rest),*])
     );
 }
 
@@ -130,38 +130,6 @@ impl<T: Default, const N: usize> Default for ComboVec<T, N> {
     }
 }
 
-impl<T: Copy, const N: usize> ComboVec<T, N> {
-    /// Create a [`ComboVec`] from a fixed size array.
-    ///
-    /// All slots must be populated with `Some` values until
-    /// the first `None` value is encountered, or the end of the array is reached.
-    /// After that, all remaining slots must be `None`.
-    ///
-    /// This function is forced to accept a reference to the array and then copy it
-    /// due to <https://github.com/rust-lang/rust/issues/80384>
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use combo_vec::{combo_vec, ComboVec};
-    ///
-    /// let my_combo_vec = ComboVec::from_arr_and_len(&[Some(1), Some(2), Some(3), None, None]);
-    /// let convenient_combo_vec = combo_vec![1, 2, 3; None, None];
-    ///
-    /// assert_eq!(my_combo_vec, convenient_combo_vec);
-    /// assert_eq!(my_combo_vec.len(), 3);
-    /// assert_eq!(my_combo_vec.stack_capacity(), 5);
-    /// assert_eq!(my_combo_vec.heap_capacity(), 0);
-    /// assert_eq!(my_combo_vec.capacity(), 5);
-    /// ```
-    pub const fn from_arr_and_len(arr: &[Option<T>; N]) -> Self {
-        Self {
-            arr: ReArr::from_arr_and_len(arr),
-            vec: Vec::new(),
-        }
-    }
-}
-
 impl<T, const N: usize> ComboVec<T, N> {
     /// Create a new, empty [`ComboVec`] with the ability for `N` element to be allocated on the stack.
     ///
@@ -219,21 +187,23 @@ impl<T, const N: usize> ComboVec<T, N> {
 
     /// Create a [`ComboVec`] from a fixed size array.
     ///
-    /// Only Some are allowed, no unitialized None values.
+    /// All slots must be populated with `Some` values until
+    /// the first `None` value is encountered, or the end of the array is reached.
+    /// After that, all remaining slots must be `None`.
     ///
-    /// This is used by the [`combo_vec!`] macro.
+    /// ## Examples
     ///
     /// ```rust
     /// use combo_vec::{combo_vec, ComboVec};
     ///
-    /// let my_combo_vec = ComboVec::from_arr([Some(1), Some(2), Some(3)]);
-    /// let convient_combo_vec = combo_vec![1, 2, 3];
+    /// let my_combo_vec = ComboVec::from_arr([Some(1), Some(2), Some(3), None, None]);
+    /// let convenient_combo_vec = combo_vec![1, 2, 3; None, None];
     ///
-    /// assert_eq!(my_combo_vec, convient_combo_vec);
+    /// assert_eq!(my_combo_vec, convenient_combo_vec);
     /// assert_eq!(my_combo_vec.len(), 3);
-    /// assert_eq!(my_combo_vec.stack_capacity(), 3);
+    /// assert_eq!(my_combo_vec.stack_capacity(), 5);
     /// assert_eq!(my_combo_vec.heap_capacity(), 0);
-    /// assert_eq!(my_combo_vec.capacity(), 3);
+    /// assert_eq!(my_combo_vec.capacity(), 5);
     /// ```
     #[must_use]
     #[inline]
@@ -914,6 +884,9 @@ impl<T: Debug, const N: usize> Debug for ComboVec<T, N> {
 impl<T: Debug, const N: usize> Display for ComboVec<T, N> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        f.debug_list().entries(self.arr.iter()).entries(&self.vec).finish()
+        f.debug_list()
+            .entries(self.arr.iter())
+            .entries(&self.vec)
+            .finish()
     }
 }

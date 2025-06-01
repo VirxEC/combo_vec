@@ -1,7 +1,8 @@
 use arrayvec::ArrayVec;
 use combo_vec::{combo_vec, re_arr, ComboVec, ReArr};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use smallvec::SmallVec;
+use std::hint::black_box;
 
 const MY_VEC: ComboVec<i32, 8> = combo_vec![];
 const MY_ARR: ReArr<i32, 8> = re_arr![];
@@ -232,7 +233,18 @@ criterion_group!(
     push_no_vec,
     push_clone_const_no_vec,
 );
-criterion_group!(smallvec, smallvec_push, smallvec_clone_const_push, smallvec_push_big);
+criterion_group!(
+    smallvec,
+    smallvec_push,
+    smallvec_clone_const_push,
+    smallvec_push_big
+);
 criterion_group!(arrayvec, arrayvec_push_big);
-criterion_group!(pop, arr_pop_big, vec_pop_big, arrayvec_pop_big, smallvec_pop_big);
+criterion_group!(
+    pop,
+    arr_pop_big,
+    vec_pop_big,
+    arrayvec_pop_big,
+    smallvec_pop_big
+);
 criterion_main!(pop, arrayvec, smallvec, gets, news, pushes);

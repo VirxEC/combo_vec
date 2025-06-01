@@ -46,7 +46,7 @@ macro_rules! re_arr {
         $crate::ReArr::from_arr([$(Some($x)),+])
     );
     ($($x:expr),+; $($rest:expr),* $(,)?) => (
-        $crate::ReArr::from_arr_and_len(&[$(Some($x)),+, $($rest),*])
+        $crate::ReArr::from_arr([$(Some($x)),+, $($rest),*])
     );
 }
 
@@ -131,47 +131,6 @@ impl<T, const N: usize> Default for ReArr<T, N> {
     }
 }
 
-impl<T: Copy, const N: usize> ReArr<T, N> {
-    /// Create a new [`ReArr`] from an array.
-    ///
-    /// All slots must be populated with `Some` values until
-    /// the first `None` value is encountered, or the end of the array is reached.
-    /// After that, all remaining slots must be `None`.
-    ///
-    /// This function is forced to accept a reference to the array and then copy it
-    /// due to <https://github.com/rust-lang/rust/issues/57349>
-    ///
-    /// This is used by the [`re_arr!`] macro.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use combo_vec::{re_arr, ReArr};
-    ///
-    /// let my_re_arr = ReArr::from_arr_and_len(&[Some(1), Some(2), Some(3), None, None]);
-    /// let convenient_re_arr = re_arr![1, 2, 3; None, None];
-    ///
-    /// assert_eq!(my_re_arr, convenient_re_arr);
-    /// assert_eq!(my_re_arr.len(), 3);
-    /// assert_eq!(my_re_arr.capacity(), 5);
-    /// ```
-    #[must_use]
-    #[inline]
-    pub const fn from_arr_and_len(arr: &[Option<T>; N]) -> Self {
-        let mut arr_len = 0;
-
-        while arr_len < N {
-            if arr[arr_len].is_none() {
-                break;
-            }
-
-            arr_len += 1;
-        }
-
-        Self { arr: *arr, arr_len }
-    }
-}
-
 impl<T, const N: usize> ReArr<T, N> {
     const DEFAULT_ARR_VALUE: Option<T> = None;
 
@@ -199,7 +158,9 @@ impl<T, const N: usize> ReArr<T, N> {
 
     /// Create a new [`ReArr`] from an array.
     ///
-    /// All slots must be populated with `Some` values.
+    /// All slots must be populated with `Some` values until
+    /// the first `None` value is encountered, or the end of the array is reached.
+    /// After that, all remaining slots must be `None`.
     ///
     /// This is used by the [`re_arr!`] macro.
     ///
@@ -208,24 +169,29 @@ impl<T, const N: usize> ReArr<T, N> {
     /// ```rust
     /// use combo_vec::{re_arr, ReArr};
     ///
-    /// let my_re_arr = ReArr::from_arr([Some(1), Some(2), Some(3)]);
-    /// let convenient_re_arr = re_arr![1, 2, 3];
+    /// let my_re_arr = ReArr::from_arr([Some(1), Some(2), Some(3), None, None]);
+    /// let convenient_re_arr = re_arr![1, 2, 3; None, None];
     ///
     /// assert_eq!(my_re_arr, convenient_re_arr);
     /// assert_eq!(my_re_arr.len(), 3);
-    /// assert_eq!(my_re_arr.capacity(), 3);
+    /// assert_eq!(my_re_arr.capacity(), 5);
     /// ```
     #[must_use]
     #[inline]
     pub const fn from_arr(arr: [Option<T>; N]) -> Self {
-        Self { arr, arr_len: N }
+        let mut arr_len = 0;
+        while arr_len < N && arr[arr_len].is_some() {
+            arr_len += 1;
+        }
+
+        Self { arr, arr_len }
     }
 
     // Create a new [`ReArr`] from an iterator reference, taking up to N items
-    // 
+    //
     // Allows for initialization without consuming the iterator, leaving its
     // remaining content for another procedure.
-    // 
+    //
     // This is useful for ComboVec::from_iter, which needs to initialise both
     // a ReArr and a Vec.
     pub(crate) fn from_iter_ref(iter: &mut impl Iterator<Item = T>) -> Self {
@@ -256,6 +222,7 @@ impl<T, const N: usize> ReArr<T, N> {
     ///
     /// assert_eq!(my_re_arr.len(), 4);
     /// assert_eq!(my_re_arr.capacity(), 4);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![1, 2, 3, 4]);
     /// ```
     #[inline]
@@ -432,6 +399,7 @@ impl<T, const N: usize> ReArr<T, N> {
     ///
     /// assert_eq!(my_re_arr.remove(1), 2);
     /// assert_eq!(my_re_arr.len(), 2);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![1, 3]);
     /// ```
     #[inline]
@@ -466,6 +434,7 @@ impl<T, const N: usize> ReArr<T, N> {
     ///
     /// assert_eq!(my_re_arr.swap_remove(0), 1);
     /// assert_eq!(my_re_arr.len(), 2);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![3, 2]);
     /// ```
     #[inline]
@@ -703,13 +672,18 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_re_arr.len(), 3);
     /// my_re_arr.resize(5, 4);
     /// assert_eq!(my_re_arr.len(), 5);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![1, 2, 3, 4, 4]);
     /// my_re_arr.resize(2, 4);
     /// assert_eq!(my_re_arr.len(), 2);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![1, 2]);
     /// ```
     pub fn resize(&mut self, new_len: usize, val: T) {
-        assert!(new_len <= N, "new length cannot be greater than the internal array length");
+        assert!(
+            new_len <= N,
+            "new length cannot be greater than the internal array length"
+        );
 
         if new_len > self.arr_len {
             self.arr[self.arr_len..new_len].fill(Some(val));
@@ -741,13 +715,18 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
     /// assert_eq!(my_re_arr.len(), 3);
     /// my_re_arr.resize_with(5, Default::default);
     /// assert_eq!(my_re_arr.len(), 5);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![1, 2, 3, 0, 0]);
     /// my_re_arr.resize_with(2, Default::default);
     /// assert_eq!(my_re_arr.len(), 2);
+    /// #[cfg(feature = "alloc")]
     /// assert_eq!(my_re_arr.to_vec(), vec![1, 2]);
     /// ```
     pub fn resize_with<F: FnMut() -> T>(&mut self, new_len: usize, mut f: F) {
-        assert!(new_len <= N, "new length cannot be greater than the internal array length");
+        assert!(
+            new_len <= N,
+            "new length cannot be greater than the internal array length"
+        );
 
         if new_len > self.arr_len {
             self.arr[self.arr_len..new_len].fill(Some(f()));
@@ -814,7 +793,7 @@ impl<T, const N: usize> IntoIterator for ReArr<T, N> {
 impl<T, const N: usize> FromIterator<T> for ReArr<T, N> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        ReArr::from_iter_ref(&mut iter.into_iter())
+        Self::from_iter_ref(&mut iter.into_iter())
     }
 }
 
