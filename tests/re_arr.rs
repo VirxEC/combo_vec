@@ -30,6 +30,31 @@ fn make_new() {
 }
 
 #[test]
+fn from_iter() {
+    // Empty iterator
+    let cv = std::iter::empty().collect::<ReArr<i32, 4>>();
+    assert_eq!(cv.len(), 0);
+    assert_eq!(cv.get(0), None);
+
+    // Iterator shorter than array
+    let cv = (1..=3).collect::<ReArr<i32, 4>>();
+    assert_eq!(cv.len(), 3);
+    assert_eq!(cv.get(0), Some(&1));
+    assert_eq!(cv.get(1), Some(&2));
+    assert_eq!(cv.get(2), Some(&3));
+    assert_eq!(cv.get(3), None);
+
+    // Iterator longer than array
+    let cv = (1..=5).collect::<ReArr<i32, 4>>();
+    assert_eq!(cv.len(), 4);
+    assert_eq!(cv.get(0), Some(&1));
+    assert_eq!(cv.get(1), Some(&2));
+    assert_eq!(cv.get(2), Some(&3));
+    assert_eq!(cv.get(3), Some(&4));
+    assert_eq!(cv.get(4), None);
+}
+
+#[test]
 fn iter() {
     let mut cv = DEFAULT_TEST_REARR;
     cv.push(4);
