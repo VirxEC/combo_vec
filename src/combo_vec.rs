@@ -498,6 +498,77 @@ impl<T, const N: usize> ComboVec<T, N> {
         self.vec.clear();
     }
 
+    /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::combo_vec;
+    ///
+    /// let mut x = combo_vec![1, 2, 3];
+    /// assert_eq!(x.remove(1), 2);
+    /// assert_eq!(x.to_vec(), vec![1, 3]);
+    /// x.extend([4, 5, 6]);
+    /// assert_eq!(x.to_vec(), vec![1, 3, 4, 5, 6]);
+    /// assert_eq!(x.remove(3), 5);
+    /// assert_eq!(x.to_vec(), vec![1, 3, 4, 6]);
+    /// ```
+    #[inline]
+    pub fn remove(&mut self, index: usize) -> T {
+        if index >= N {
+            self.vec.remove(index - N)
+        } else {
+            let val = self.arr.remove(index);
+
+            if !self.vec.is_empty() {
+                self.arr.push(self.vec.remove(0));
+            }
+
+            val
+        }
+    }
+
+    /// Removes an element from the `ComboVec` and returns it.
+    ///
+    /// The removed element is replaced by the last element of the `ComboVec`.
+    ///
+    /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `index` is out of bounds, or if it is the last value.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::combo_vec;
+    ///
+    /// let mut x = combo_vec![1, 2, 3, 4];
+    /// assert_eq!(x.swap_remove(1), 2);
+    /// assert_eq!(x.to_vec(), vec![1, 4, 3]);
+    /// x.extend([5, 6, 7]);
+    /// assert_eq!(x.to_vec(), vec![1, 4, 3, 5, 6, 7]);
+    /// assert_eq!(x.swap_remove(4), 6);
+    /// assert_eq!(x.to_vec(), vec![1, 4, 3, 5, 7]);
+    /// ```
+    #[inline]
+    pub fn swap_remove(&mut self, index: usize) -> T {
+        if index >= N {
+            self.vec.swap_remove(index - N)
+        } else if self.len() <= N {
+            self.arr.swap_remove(index)
+        } else {
+            let last_value = self.vec.pop().unwrap();
+            // optimization that requires we reach into
+            // the underlying representation of the array
+            self.arr.arr[index].replace(last_value).unwrap()
+        }
+    }
+
     /// Get the first element, returning `None` if there are no elements.
     ///
     /// ## Examples
@@ -756,77 +827,6 @@ impl<T: Clone, const N: usize> ComboVec<T, N> {
         } else {
             self.arr.resize_with(new_len, f);
             self.vec.clear();
-        }
-    }
-
-    /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
-    ///
-    /// ## Panics
-    ///
-    /// Panics if `index` is out of bounds.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use combo_vec::combo_vec;
-    ///
-    /// let mut x = combo_vec![1, 2, 3];
-    /// assert_eq!(x.remove(1), 2);
-    /// assert_eq!(x.to_vec(), vec![1, 3]);
-    /// x.extend([4, 5, 6]);
-    /// assert_eq!(x.to_vec(), vec![1, 3, 4, 5, 6]);
-    /// assert_eq!(x.remove(3), 5);
-    /// assert_eq!(x.to_vec(), vec![1, 3, 4, 6]);
-    /// ```
-    #[inline]
-    pub fn remove(&mut self, index: usize) -> T {
-        if index >= N {
-            self.vec.remove(index - N)
-        } else {
-            let val = self.arr.remove(index);
-
-            if !self.vec.is_empty() {
-                self.arr.push(self.vec.remove(0));
-            }
-
-            val
-        }
-    }
-
-    /// Removes an element from the `ComboVec` and returns it.
-    ///
-    /// The removed element is replaced by the last element of the `ComboVec`.
-    ///
-    /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
-    ///
-    /// ## Panics
-    ///
-    /// Panics if `index` is out of bounds, or if it is the last value.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use combo_vec::combo_vec;
-    ///
-    /// let mut x = combo_vec![1, 2, 3, 4];
-    /// assert_eq!(x.swap_remove(1), 2);
-    /// assert_eq!(x.to_vec(), vec![1, 4, 3]);
-    /// x.extend([5, 6, 7]);
-    /// assert_eq!(x.to_vec(), vec![1, 4, 3, 5, 6, 7]);
-    /// assert_eq!(x.swap_remove(4), 6);
-    /// assert_eq!(x.to_vec(), vec![1, 4, 3, 5, 7]);
-    /// ```
-    #[inline]
-    pub fn swap_remove(&mut self, index: usize) -> T {
-        if index >= N {
-            self.vec.swap_remove(index - N)
-        } else if self.len() <= N {
-            self.arr.swap_remove(index)
-        } else {
-            let last_value = self.vec.pop().unwrap();
-            // optimization that requires we reach into
-            // the underlying representation of the array
-            self.arr.arr[index].replace(last_value).unwrap()
         }
     }
 }
