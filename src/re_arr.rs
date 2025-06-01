@@ -398,6 +398,63 @@ impl<T, const N: usize> ReArr<T, N> {
         self.arr_len = 0;
     }
 
+    /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{re_arr, ReArr};
+    ///
+    /// let mut my_re_arr = re_arr![1, 2, 3; None];
+    ///
+    /// assert_eq!(my_re_arr.remove(1), 2);
+    /// assert_eq!(my_re_arr.len(), 2);
+    /// assert_eq!(my_re_arr.to_vec(), vec![1, 3]);
+    /// ```
+    #[inline]
+    pub fn remove(&mut self, index: usize) -> T {
+        let val = self.arr[index].take().unwrap();
+
+        for i in index..self.arr_len - 1 {
+            self.arr[i] = self.arr[i + 1].take();
+        }
+
+        self.arr_len -= 1;
+
+        val
+    }
+
+    /// Removes an element from the `ReArr` and returns it.
+    ///
+    /// The removed element is replaced by the last element of the `ReArr`.
+    ///
+    /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `index` is out of bounds, or if it is the last value.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use combo_vec::{re_arr, ReArr};
+    ///
+    /// let mut my_re_arr = re_arr![1, 2, 3; None];
+    ///
+    /// assert_eq!(my_re_arr.swap_remove(0), 1);
+    /// assert_eq!(my_re_arr.len(), 2);
+    /// assert_eq!(my_re_arr.to_vec(), vec![3, 2]);
+    /// ```
+    #[inline]
+    pub const fn swap_remove(&mut self, index: usize) -> T {
+        let last_value = self.pop().unwrap();
+        self.arr[index].replace(last_value).unwrap()
+    }
+
     /// Get the first element, returning `None` if there are no elements.
     ///
     /// ## Examples
@@ -680,63 +737,6 @@ impl<T: Clone, const N: usize> ReArr<T, N> {
         }
 
         self.arr_len = new_len;
-    }
-
-    /// Removes and returns the element at position with a valid index, shifting all elements after it to the left.
-    ///
-    /// ## Panics
-    ///
-    /// Panics if `index` is out of bounds.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use combo_vec::{re_arr, ReArr};
-    ///
-    /// let mut my_re_arr = re_arr![1, 2, 3; None];
-    ///
-    /// assert_eq!(my_re_arr.remove(1), 2);
-    /// assert_eq!(my_re_arr.len(), 2);
-    /// assert_eq!(my_re_arr.to_vec(), vec![1, 3]);
-    /// ```
-    #[inline]
-    pub fn remove(&mut self, index: usize) -> T {
-        let val = self.arr[index].take().unwrap();
-
-        for i in index..self.arr_len - 1 {
-            self.arr[i] = self.arr[i + 1].take();
-        }
-
-        self.arr_len -= 1;
-
-        val
-    }
-
-    /// Removes an element from the `ReArr` and returns it.
-    ///
-    /// The removed element is replaced by the last element of the `ReArr`.
-    ///
-    /// This does not preserve ordering, but is O(1). If you need to preserve the element order, use remove instead.
-    ///
-    /// ## Panics
-    ///
-    /// Panics if `index` is out of bounds, or if it is the last value.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use combo_vec::{re_arr, ReArr};
-    ///
-    /// let mut my_re_arr = re_arr![1, 2, 3; None];
-    ///
-    /// assert_eq!(my_re_arr.swap_remove(0), 1);
-    /// assert_eq!(my_re_arr.len(), 2);
-    /// assert_eq!(my_re_arr.to_vec(), vec![3, 2]);
-    /// ```
-    #[inline]
-    pub const fn swap_remove(&mut self, index: usize) -> T {
-        let last_value = self.pop().unwrap();
-        self.arr[index].replace(last_value).unwrap()
     }
 }
 
